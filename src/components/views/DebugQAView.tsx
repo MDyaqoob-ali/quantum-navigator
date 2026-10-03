@@ -20,7 +20,13 @@ import { calculateBlochResultant, evaluateBlochLevel } from '../../core/engines/
 import { evaluateGateLevel } from '../../core/engines/gateSimulationEngine';
 import { calculateInterference, evaluateInterferenceLevel } from '../../core/engines/interferenceEngine';
 import { calculateSingleBarrierTransmission, calculateMultiBarrierTransmission, evaluateTunnelingLevel } from '../../core/engines/tunnelingEngine';
-import { simulateQPE, evaluatePhaseLevel, verifyQFTUnitarity } from '../../core/engines/phaseEstimationEngine';
+import {
+  calculateSpinMeasurement,
+  calculateSequentialSpin,
+  collapseSpinState,
+  evaluateSpinSplitterLevel,
+  angleToAxis2D,
+} from '../../core/engines/spinSplitterEngine';
 
 export const DebugQAView: React.FC = () => {
   const [testResults, setTestResults] = useState<{ name: string; track: string; passed: boolean; message: string }[]>([]);
@@ -138,26 +144,48 @@ export const DebugQAView: React.FC = () => {
       results.push({ track: 'Track 4', name: 'Tunneling Engine Execution', passed: false, message: err.message });
     }
 
-    // Track 5 Tests
+    // Track 5 Tests: Spin Splitter
     try {
-      const qpe = simulateQPE(0.375, 3);
-      const t5Passed = qpe.mostProbableBitString === '011' && Math.abs(qpe.mostProbablePhase - 0.375) < 1e-4;
+      const zState = angleToAxis2D(0); // +Z
+      const zAxis = angleToAxis2D(0);  // +Z
+      const xAxis = angleToAxis2D(90); // +X
+      const negZAxis = angleToAxis2D(180); // -Z
+
+      const mAligned = calculateSpinMeasurement(zState, zAxis);
+      const mOrthogonal = calculateSpinMeasurement(zState, xAxis);
+      const mOpposite = calculateSpinMeasurement(zState, negZAxis);
+
+      const t5PhysicsPassed =
+        Math.abs(mAligned.probPlus - 1.0) < 1e-4 &&
+        Math.abs(mOrthogonal.probPlus - 0.5) < 1e-4 &&
+        Math.abs(mOpposite.probPlus - 0.0) < 1e-4;
+
       results.push({
-        track: 'Track 5: Quantum Radar',
-        name: 'Quantum Phase Estimation Dyadic Peak Detection (011 -> 0.375)',
-        passed: t5Passed,
-        message: t5Passed ? 'QPE readout peak verified.' : 'QPE peak mismatch.',
+        track: 'Track 5: Spin Splitter',
+        name: 'Quantum Spin Measurement Probabilities (P(+) = cos²(θ/2))',
+        passed: t5PhysicsPassed,
+        message: t5PhysicsPassed
+          ? 'Aligned (100%), Orthogonal (50%), and Opposite (0%) verified.'
+          : 'Spin measurement probability calculation failed.',
       });
 
-      const qftUnitary = verifyQFTUnitarity(3);
+      // Sequential Measurement & State Collapse
+      const seq = calculateSequentialSpin(zState, xAxis, '+', zAxis);
+      const t5SeqPassed =
+        Math.abs(seq.analyzer1.probPlus - 0.5) < 1e-4 &&
+        Math.abs(seq.collapsedState.x - 1.0) < 1e-4 &&
+        Math.abs(seq.finalProbPlus - 0.5) < 1e-4;
+
       results.push({
-        track: 'Track 5: Quantum Radar',
-        name: 'Inverse QFT Unitary Matrix Transformation (QFT† * QFT = I)',
-        passed: qftUnitary,
-        message: qftUnitary ? 'Inverse QFT matrix unitarity verified.' : 'Unitarity violated.',
+        track: 'Track 5: Spin Splitter',
+        name: 'Sequential Measurement & State Collapse (r -> +n1 -> n2)',
+        passed: t5SeqPassed,
+        message: t5SeqPassed
+          ? 'Post-measurement state collapse and disturbance verified.'
+          : 'Sequential state collapse logic error.',
       });
     } catch (err: any) {
-      results.push({ track: 'Track 5', name: 'Quantum Radar Execution', passed: false, message: err.message });
+      results.push({ track: 'Track 5', name: 'Spin Splitter Execution', passed: false, message: err.message });
     }
 
     setTestResults(results);

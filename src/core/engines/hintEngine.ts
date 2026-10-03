@@ -8,6 +8,11 @@ import { calculateInterference } from './interferenceEngine';
 import { simulateCircuit } from './gateSimulationEngine';
 import { stateFidelity } from '../math/statevector';
 import { calculateTunneling, TunnelingState } from './tunnelingEngine';
+import {
+  calculateSequentialSpin,
+  angleToAxis2D,
+  SpinSplitterState,
+} from './spinSplitterEngine';
 
 export interface HintContext {
   trackId: TrackId;
@@ -41,7 +46,7 @@ export function generateTrackHint(ctx: HintContext): GeneratedHint {
     case 'error-correction':
       return generateTunnelingHint(level, state, clampedTier, ctx.hasInteracted);
     case 'phase-estimation':
-      return generatePhaseHint(level, state, clampedTier, ctx.hasInteracted);
+      return generateSpinHint(level, state, clampedTier, ctx.hasInteracted);
     default:
       return {
         tier: clampedTier,
@@ -510,153 +515,180 @@ function generateTunnelingHint(level: any, liveState: any, tier: number, hasInte
 }
 
 // -------------------------------------------------------------
-// TRACK 5: QUANTUM RADAR (PHASE ESTIMATION) HINTS
+// TRACK 5: SPIN SPLITTER (QUANTUM SPIN & MEASUREMENT) HINTS
 // -------------------------------------------------------------
-function generatePhaseHint(level: any, state: any, tier: number, hasInteracted = false): GeneratedHint {
-  // Support both legacy number estimate and rich QuantumRadarState
+function generateSpinHint(level: any, state: any, tier: number, hasInteracted = false): GeneratedHint {
   const isStateObject = typeof state === 'object' && state !== null;
-  const selectedSignalId = isStateObject ? state.selectedSignalId : level.targetSignalId;
-  const playerEstimate = isStateObject ? (state.playerPhaseEstimate ?? 0.1) : (typeof state === 'number' ? state : 0.1);
-  const hasRunQPE = isStateObject ? Boolean(state.hasRunQPE) : hasInteracted;
-  const precisionBits = isStateObject ? (state.selectedPrecisionBits || level.requiredPrecisionBits || 3) : (level.phaseLevel?.estimationQubits ?? 3);
+  const analyzer1Angle = isStateObject ? (state.analyzer1Angle ?? level.analyzer1InitialAngle ?? 0) : 0;
+  const analyzer2Angle = isStateObject ? (state.analyzer2Angle ?? level.analyzer2InitialAngle) : level.analyzer2InitialAngle;
+  const selectedBranch = isStateObject ? (state.selectedBranch ?? '+') : '+';
+  const hasRun = isStateObject ? Boolean(state.hasRunExperiment) : hasInteracted;
 
-  const targetSignalId = level.targetSignalId || 'S1';
-  const targetSignal = level.signals?.find((s: any) => s.id === targetSignalId);
-  const truePhase = targetSignal?.truePhase ?? level.phaseLevel?.truePhase ?? level.truePhase ?? 0.5;
-  const tol = level.targetTolerance ?? level.phaseLevel?.tolerance ?? level.tolerance ?? 0.03;
-  const targetRange = level.targetPhaseRange || [truePhase - tol, truePhase + tol];
+  // Compute live physics
+  const axis1 = angleToAxis2D(analyzer1Angle);
+  const axis2 =
+    level.analyzerCount === 2 && analyzer2Angle !== undefined
+      ? angleToAxis2D(analyzer2Angle)
+      : undefined;
 
-  // 1. State: No signal selected
-  if (isStateObject && !selectedSignalId) {
+  const simResult = calculateSequentialSpin(
+    level.sourceState,
+    axis1,
+    selectedBranch,
+    axis2
+  );
+
+  const activeRes =
+    level.targetDetector === 'analyzer1' || level.analyzerCount === 1
+      ? simResult.analyzer1
+      : simResult.analyzer2 || simResult.analyzer1;
+
+  const measuredProbPlus =
+    level.targetDetector === 'analyzer1' || level.analyzerCount === 1
+      ? simResult.analyzer1.probPlus
+      : simResult.finalProbPlus;
+
+  const targetProbPlus = level.targetProbPlus ?? 0.5;
+  const targetTol = level.targetTolerance ?? 0.04;
+  const errorDelta = Math.abs(measuredProbPlus - targetProbPlus);
+  const isClose = errorDelta <= targetTol * 2.0;
+  const isAligned = errorDelta <= targetTol;
+
+  // 1. Branch mismatch check (for sequential levels)
+  if (level.branchSelectionRequired && level.targetBranch && selectedBranch !== level.targetBranch) {
     if (tier === 1) {
       return {
         tier: 1,
         maxTier: 4,
-        title: 'Target Signal Selection',
-        body: `Select the signal that best matches the mission's phase region (${targetRange[0].toFixed(2)}–${targetRange[1].toFixed(2)}) from the radar spectrum.`,
-        actionableDirection: 'Click a candidate signal on the radar.',
+        title: 'Branch Routing',
+        body: 'Your second analyzer is measuring the wrong branch. Look closely at which beam the mission requires routing.',
+        actionableDirection: `Check branch requirement (${level.targetBranch}).`,
         isClose: false,
       };
     }
     return {
       tier,
       maxTier: 4,
-      title: 'Target Beacon Identification',
-      body: `Signal ${targetSignalId} (${targetSignal?.name || 'Target'}) is located in the target frequency band. Select it on the radar display.`,
-      actionableDirection: `Select signal ${targetSignalId}.`,
+      title: 'Select Correct Branch',
+      body: `The mission requires routing the ${level.targetBranch} branch into Analyzer 2. Click "Select ${level.targetBranch} Branch".`,
+      actionableDirection: `Switch to ${level.targetBranch} branch.`,
       isClose: false,
     };
   }
 
-  // 2. State: Signal selected, but QPE not executed yet
-  if (isStateObject && !hasRunQPE) {
-    if (tier === 1) {
-      return {
-        tier: 1,
-        maxTier: 4,
-        title: 'Run QPE Experiment',
-        body: 'Your radar has not collected a measurement yet. Select estimation precision and run the QPE experiment.',
-        actionableDirection: 'Click "Run QPE Experiment".',
-        isClose: false,
-      };
-    }
+  // 2. Target already reached
+  if (isAligned) {
     return {
       tier,
       maxTier: 4,
-      title: 'Configure QPE Precision',
-      body: `Use ${precisionBits} bits of precision for this target and click "Run QPE Experiment" to sample the phase distribution.`,
-      actionableDirection: `Run QPE with ${precisionBits} bits.`,
-      isClose: false,
-    };
-  }
-
-  // 3. State: Wrong signal selected
-  if (isStateObject && selectedSignalId !== targetSignalId) {
-    if (tier === 1) {
-      return {
-        tier: 1,
-        maxTier: 4,
-        title: 'Signal Region Mismatch',
-        body: `Your estimated phase is outside the mission range (${targetRange[0].toFixed(2)}–${targetRange[1].toFixed(2)}). Consider scanning another signal source on the radar.`,
-        actionableDirection: 'Switch to a different radar signal.',
-        isClose: false,
-      };
-    }
-    return {
-      tier,
-      maxTier: 4,
-      title: 'Correct Target Signal',
-      body: `The target signal for this mission is ${targetSignalId} (${targetSignal?.name || 'Target Beacon'}). Switch to ${targetSignalId} and run QPE.`,
-      actionableDirection: `Switch to ${targetSignalId}.`,
-      isClose: false,
-    };
-  }
-
-  // 4. Calculate error against true phase
-  const rawDiff = Math.abs((playerEstimate % 1.0) - (truePhase % 1.0));
-  const diff = Math.min(rawDiff, 1.0 - rawDiff);
-  const isClose = diff <= tol;
-
-  if (isClose) {
-    return {
-      tier,
-      maxTier: 4,
-      title: 'Estimate Accurate!',
-      body: `Your estimate (φ = ${playerEstimate.toFixed(3)}) is within tolerance ±${tol} of the true phase! Click "Lock Signal" to complete the mission.`,
-      actionableDirection: 'Click "Lock Signal" now.',
+      title: 'Target Reached!',
+      body: `Current Detector + is ${(measuredProbPlus * 100).toFixed(1)}%, within target ${(targetProbPlus * 100).toFixed(0)}% ± ${(targetTol * 100).toFixed(0)}%! Click "Run Experiment" to complete the mission.`,
+      actionableDirection: 'Click "Run Experiment" now.',
       isClose: true,
     };
   }
 
-  // Tier 1: Conceptual guidance
-  if (tier === 1) {
-    const N = 1 << precisionBits;
+  // 3. Very close
+  if (isClose) {
     return {
-      tier: 1,
+      tier,
       maxTier: 4,
-      title: 'Reading the Quantum Spectrum',
-      body: `The QPE circuit projects the continuous phase into discrete binary basis states |k⟩ of an ${precisionBits}-qubit register. The peak frequency bin corresponds to k / ${N}.`,
-      actionableDirection: 'Inspect the measurement distribution peak.',
-      isClose: false,
+      title: 'Near Target',
+      body: `You are within ${(errorDelta * 100).toFixed(1)} percentage points of the target! Make a subtle fine-tuning nudge on the active analyzer.`,
+      actionableDirection: 'Subtle fine-tuning needed.',
+      isClose: true,
     };
   }
 
-  // Tier 2: Direction of change
+  // 4. Tier 1: Conceptual physics
+  if (tier === 1) {
+    if (activeRes.angleDegrees < 25) {
+      return {
+        tier: 1,
+        maxTier: 4,
+        title: 'Aligned Axis Dominance',
+        body: 'Your analyzer axis is very close to the incoming spin direction, so the + outcome dominates (cos²(θ/2) ≈ 100%).',
+        actionableDirection: 'Rotate analyzer away from source to split outcomes.',
+        isClose: false,
+      };
+    } else if (Math.abs(activeRes.angleDegrees - 90) < 20) {
+      return {
+        tier: 1,
+        maxTier: 4,
+        title: 'Perpendicular Measurement',
+        body: 'Your analyzer is nearly perpendicular to the spin direction, producing an equal 50/50 split (cos²(45°) = 0.5).',
+        actionableDirection: 'Rotate toward or away from spin to shift probability.',
+        isClose: false,
+      };
+    } else if (activeRes.angleDegrees > 155) {
+      return {
+        tier: 1,
+        maxTier: 4,
+        title: 'Opposite Axis Domination',
+        body: 'Your analyzer points almost opposite to the spin direction, sending nearly all particles to Detector - (sin²(θ/2) ≈ 100%).',
+        actionableDirection: 'Rotate back toward the spin direction.',
+        isClose: false,
+      };
+    } else {
+      return {
+        tier: 1,
+        maxTier: 4,
+        title: 'Quantum Spin Measurement',
+        body: 'Measurement probability is P(+) = cos²(θ/2), where θ is the angle between the particle spin vector and the analyzer axis.',
+        actionableDirection: 'Rotate the analyzer orientation needle.',
+        isClose: false,
+      };
+    }
+  }
+
+  // 5. Tier 2: Direction of rotation
   if (tier === 2) {
-    const higher = playerEstimate < truePhase;
+    const needMorePlus = measuredProbPlus < targetProbPlus;
+    const dirText = needMorePlus
+      ? 'Rotate your active analyzer closer to the particle spin direction to increase the + outcome probability.'
+      : 'Rotate your active analyzer further away from the spin direction to reduce the + outcome probability.';
     return {
       tier: 2,
       maxTier: 4,
-      title: 'Estimate Direction',
-      body: `Your estimate of ${playerEstimate.toFixed(3)} is ${higher ? 'lower' : 'higher'} than the measured peak. Adjust your phase estimate ${higher ? 'upward' : 'downward'}.`,
-      actionableDirection: higher ? 'Increase phase estimate.' : 'Decrease phase estimate.',
+      title: 'Rotation Direction',
+      body: `Detector + currently receives ${(measuredProbPlus * 100).toFixed(1)}% (Target: ${(targetProbPlus * 100).toFixed(0)}%). ${dirText}`,
+      actionableDirection: needMorePlus ? 'Rotate closer to spin axis.' : 'Rotate further from spin axis.',
       isClose: false,
     };
   }
 
-  // Tier 3: Binary fraction conversion
+  // 6. Tier 3: Specific educational hints from level config
   if (tier === 3) {
-    const N = 1 << precisionBits;
-    const peakBin = Math.round(truePhase * N) % N;
-    const peakFraction = (peakBin / N).toFixed(3);
-    const bitString = peakBin.toString(2).padStart(precisionBits, '0');
+    const levelHint = level.hints && level.hints[1] ? level.hints[1] : undefined;
+    if (levelHint) {
+      return {
+        tier: 3,
+        maxTier: 4,
+        title: 'Level Guidance',
+        body: levelHint,
+        actionableDirection: 'Apply the level guidance.',
+        isClose: false,
+      };
+    }
+    const targetTheta = Math.round(2 * Math.acos(Math.sqrt(Math.max(0, Math.min(1, targetProbPlus)))) * (180 / Math.PI));
     return {
       tier: 3,
       maxTier: 4,
-      title: 'Binary Fraction Calculation',
-      body: `The measurement histogram peaks at register state |${bitString}⟩ (${peakBin}). With ${precisionBits} qubits, phase ≈ ${peakBin} / ${N} = ${peakFraction}.`,
-      actionableDirection: `Set phase estimate to ${peakFraction}`,
+      title: 'Angle Separation Target',
+      body: `To achieve ${(targetProbPlus * 100).toFixed(0)}% +, the separation angle θ between state and analyzer must be approximately ${targetTheta}°.`,
+      actionableDirection: `Orient analyzer ~${targetTheta}° from state.`,
       isClose: false,
     };
   }
 
-  // Tier 4: Direct target guidance
+  // 7. Tier 4: Direct orientation / solution tip
+  const finalHint = level.hints && level.hints[2] ? level.hints[2] : `Set the analyzer so Detector + reads ${(targetProbPlus * 100).toFixed(0)}% ± ${(targetTol * 100).toFixed(0)}%.`;
   return {
     tier: 4,
     maxTier: 4,
-    title: 'Signal Phase Target',
-    body: `The hidden eigenphase is φ = ${truePhase.toFixed(3)} (tolerance: ±${tol}). Set your estimate to ${truePhase.toFixed(3)} and click "Lock Signal".`,
-    actionableDirection: `Set estimate to ${truePhase.toFixed(3)} and lock signal.`,
-    isClose: false,
+    title: 'Precision Alignment',
+    body: finalHint,
+    actionableDirection: `Target: ${(targetProbPlus * 100).toFixed(0)}% ± ${(targetTol * 100).toFixed(0)}%`,
+    isClose: isClose,
   };
 }

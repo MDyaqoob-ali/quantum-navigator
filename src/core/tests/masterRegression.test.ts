@@ -12,7 +12,7 @@ import { evaluateBlochLevel } from '../engines/blochEngine';
 import { evaluateGateLevel, PlacedGate } from '../engines/gateSimulationEngine';
 import { evaluateInterferenceLevel } from '../engines/interferenceEngine';
 import { evaluateTunnelingLevel } from '../engines/tunnelingEngine';
-import { evaluatePhaseLevel, evaluateQuantumRadarLevel } from '../engines/phaseEstimationEngine';
+import { evaluateSpinSplitterLevel, sampleSpinExperiment } from '../engines/spinSplitterEngine';
 
 describe('Master QA Regression — Track 1: Qubits & The Bloch Sphere', () => {
   for (const lvl of TRACK_1_LEVELS) {
@@ -172,86 +172,85 @@ describe('Master QA Regression — Track 4: Quantum Tunneling (Tunnel Run)', () 
   }
 });
 
-describe('Master QA Regression — Track 5: Quantum Phase Estimation (Quantum Radar)', () => {
+describe('Master QA Regression — Track 5: Quantum Spin & Measurement (Spin Splitter)', () => {
   for (const lvl of TRACK_5_LEVELS) {
-    it(`Level ${lvl.levelNumber}: ${lvl.title} passes phase evaluation scenarios`, () => {
-      // 1. Unstarted (legacy evaluator)
-      const unstarted = evaluatePhaseLevel({
-        playerEstimate: 0.1,
-        level: lvl.phaseLevel,
-        hasInteracted: false,
-        hasSampled: false,
-      });
+    it(`Level ${lvl.levelNumber}: ${lvl.title} passes spin evaluation scenarios`, () => {
+      // 1. Unstarted
+      const unstarted = evaluateSpinSplitterLevel(
+        {
+          analyzer1Angle: lvl.analyzer1InitialAngle,
+          analyzer2Angle: lvl.analyzer2InitialAngle,
+          selectedBranch: '+',
+          hasRunExperiment: false,
+          experimentSample: null,
+          experimentsUsed: 0,
+        },
+        lvl
+      );
       expect(unstarted.status).toBe('unstarted');
 
-      // 2. Wrong estimate (legacy evaluator)
-      const wrongEst = (lvl.phaseLevel.truePhase + 0.5) % 1.0;
-      const wrong = evaluatePhaseLevel({
-        playerEstimate: wrongEst,
-        level: lvl.phaseLevel,
-        hasInteracted: true,
-        hasSampled: true,
-      });
-      expect(wrong.status).toBe('incorrect');
+      // 2. Budget exceeded check (if level has allowedExperiments)
+      if (lvl.allowedExperiments) {
+        const overBudget = evaluateSpinSplitterLevel(
+          {
+            analyzer1Angle: lvl.analyzer1InitialAngle,
+            analyzer2Angle: lvl.analyzer2InitialAngle,
+            selectedBranch: '+',
+            hasRunExperiment: true,
+            experimentSample: sampleSpinExperiment(lvl.targetProbPlus, 50),
+            experimentsUsed: lvl.allowedExperiments + 1,
+          },
+          lvl
+        );
+        expect(overBudget.status).toBe('invalid');
+      }
 
-      // 3. Exact estimate (legacy evaluator)
-      const correct = evaluatePhaseLevel({
-        playerEstimate: lvl.phaseLevel.truePhase,
-        level: lvl.phaseLevel,
-        hasInteracted: true,
-        hasSampled: true,
-      });
-      expect(correct.status).toBe('success');
+      // 3. Wrong branch check (if level requires branch selection)
+      if (lvl.branchSelectionRequired && lvl.targetBranch) {
+        const wrongBranch = lvl.targetBranch === '+' ? '-' : '+';
+        const branchFail = evaluateSpinSplitterLevel(
+          {
+            analyzer1Angle: lvl.analyzer1InitialAngle,
+            analyzer2Angle: lvl.analyzer2InitialAngle,
+            selectedBranch: wrongBranch,
+            hasRunExperiment: true,
+            experimentSample: sampleSpinExperiment(lvl.targetProbPlus, 50),
+            experimentsUsed: 1,
+          },
+          lvl
+        );
+        expect(branchFail.status).toBe('incorrect');
+      }
 
-      // 4. Quantum Radar Evaluator: Unstarted
-      const radarUnstarted = evaluateQuantumRadarLevel(
+      // 4. Solvable configuration yields success
+      let a1 = lvl.analyzer1InitialAngle;
+      let a2 = lvl.analyzer2InitialAngle;
+      let branch = lvl.targetBranch || '+';
+
+      if (lvl.id === 't5_l1') a1 = 0;
+      if (lvl.id === 't5_l2') a1 = 90;
+      if (lvl.id === 't5_l3') a1 = 120;
+      if (lvl.id === 't5_l4') a1 = 60;
+      if (lvl.id === 't5_l5') a1 = 180;
+      if (lvl.id === 't5_l6') { a1 = 90; a2 = 90; branch = '+'; }
+      if (lvl.id === 't5_l7') { a1 = 90; a2 = 0; branch = '+'; }
+      if (lvl.id === 't5_l8') { a1 = 90; a2 = 30; branch = '+'; }
+      if (lvl.id === 't5_l9') a1 = 60;
+      if (lvl.id === 't5_l10') { a1 = 0; a2 = 53; branch = '+'; }
+
+      const success = evaluateSpinSplitterLevel(
         {
-          selectedSignalId: null,
-          selectedPrecisionBits: lvl.requiredPrecisionBits || 3,
-          hasRunQPE: false,
-          measurementCounts: null,
-          totalShotsSampled: 0,
-          playerPhaseEstimate: null,
-          isLocked: false,
-          scansUsed: 0,
+          analyzer1Angle: a1,
+          analyzer2Angle: a2,
+          selectedBranch: branch,
+          hasRunExperiment: true,
+          experimentSample: sampleSpinExperiment(lvl.targetProbPlus, 50),
+          experimentsUsed: 1,
         },
         lvl
       );
-      expect(radarUnstarted.status).toBe('unstarted');
-
-      // 5. Quantum Radar Evaluator: Incomplete
-      const radarIncomplete = evaluateQuantumRadarLevel(
-        {
-          selectedSignalId: lvl.targetSignalId,
-          selectedPrecisionBits: lvl.requiredPrecisionBits || 3,
-          hasRunQPE: false,
-          measurementCounts: null,
-          totalShotsSampled: 0,
-          playerPhaseEstimate: null,
-          isLocked: false,
-          scansUsed: 0,
-        },
-        lvl
-      );
-      expect(radarIncomplete.status).toBe('incomplete');
-
-      // 6. Quantum Radar Evaluator: Success
-      const targetSig = lvl.signals.find(s => s.id === lvl.targetSignalId)!;
-      const radarSuccess = evaluateQuantumRadarLevel(
-        {
-          selectedSignalId: lvl.targetSignalId,
-          selectedPrecisionBits: lvl.requiredPrecisionBits || 3,
-          hasRunQPE: true,
-          measurementCounts: { '00': 100 },
-          totalShotsSampled: 100,
-          playerPhaseEstimate: targetSig.truePhase,
-          isLocked: true,
-          scansUsed: 1,
-        },
-        lvl
-      );
-      expect(radarSuccess.status).toBe('success');
-      expect(radarSuccess.score).toBeGreaterThan(150);
+      expect(success.status).toBe('success');
+      expect(success.score).toBeGreaterThan(150);
     });
   }
 });

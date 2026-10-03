@@ -75,41 +75,41 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
     xpReward: 500,
   },
   {
-    id: 'first_signal_lock',
-    title: 'First Signal Lock',
-    description: 'Complete your first Quantum Radar level.',
-    icon: 'Radio',
+    id: 'first_spin_measurement',
+    title: 'First Spin Measurement',
+    description: 'Measure your first quantum spin-1/2 state in Spin Splitter.',
+    icon: 'Compass',
     trackId: 'phase-estimation',
     xpReward: 150,
   },
   {
-    id: 'phase_scout',
-    title: 'Phase Scout',
-    description: 'Estimate 3 hidden quantum eigenphases in Track 5 (Quantum Radar).',
-    icon: 'Compass',
+    id: 'spin_navigator',
+    title: 'Spin Operator',
+    description: 'Complete 3 levels in Track 5 (Spin Splitter).',
+    icon: 'Radio',
     trackId: 'phase-estimation',
     xpReward: 250,
   },
   {
-    id: 'precision_pilot',
-    title: 'Precision Pilot',
-    description: 'Complete a 4-bit precision QPE challenge.',
+    id: 'state_preparer',
+    title: 'State Preparer',
+    description: 'Prepare a quantum spin state using a Stern-Gerlach analyzer in sequential measurement.',
     icon: 'Crosshair',
     trackId: 'phase-estimation',
     xpReward: 300,
   },
   {
-    id: 'radar_engineer',
-    title: 'Radar Engineer',
-    description: 'Complete a multi-signal quantum spectrum challenge.',
+    id: 'branch_selector',
+    title: 'Selective Splitter',
+    description: 'Direct a collapsed spin branch through sequential analyzers to hit target distributions.',
     icon: 'Layers',
     trackId: 'phase-estimation',
     xpReward: 350,
   },
   {
-    id: 'quantum_radar_master',
-    title: 'Quantum Radar Master',
-    description: 'Conquer the final Track 5 Quantum Radar Master challenge!',
+    id: 'spin_master',
+    title: 'Spin Master',
+    description: 'Conquer the final Track 5 Spin Master two-analyzer challenge!',
     icon: 'Award',
     trackId: 'phase-estimation',
     xpReward: 500,
@@ -233,40 +233,40 @@ export function checkNewAchievements(stats: PlayerStats): { updatedStats: Player
     totalBonusXp += ach.xpReward;
   }
 
-  if (track5Count >= 1 && !currentUnlocked.has('first_signal_lock')) {
-    currentUnlocked.add('first_signal_lock');
-    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'first_signal_lock')!;
+  if (track5Count >= 1 && !currentUnlocked.has('first_spin_measurement')) {
+    currentUnlocked.add('first_spin_measurement');
+    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'first_spin_measurement')!;
     newlyUnlocked.push(ach);
     totalBonusXp += ach.xpReward;
   }
 
-  if (track5Count >= 3 && !currentUnlocked.has('phase_scout')) {
-    currentUnlocked.add('phase_scout');
-    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'phase_scout')!;
+  if (track5Count >= 3 && !currentUnlocked.has('spin_navigator')) {
+    currentUnlocked.add('spin_navigator');
+    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'spin_navigator')!;
     newlyUnlocked.push(ach);
     totalBonusXp += ach.xpReward;
   }
 
-  const hasPrecisionSolved = completedKeys.some(k => k.includes('t5_l5') || k.includes('t5_l7'));
-  if (hasPrecisionSolved && !currentUnlocked.has('precision_pilot')) {
-    currentUnlocked.add('precision_pilot');
-    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'precision_pilot')!;
+  const hasSequentialSolved = completedKeys.some(k => k.includes('t5_l6') || k.includes('t5_l7'));
+  if (hasSequentialSolved && !currentUnlocked.has('state_preparer')) {
+    currentUnlocked.add('state_preparer');
+    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'state_preparer')!;
     newlyUnlocked.push(ach);
     totalBonusXp += ach.xpReward;
   }
 
-  const hasRadarEngineer = completedKeys.some(k => k.includes('t5_l8') || k.includes('t5_l9'));
-  if (hasRadarEngineer && !currentUnlocked.has('radar_engineer')) {
-    currentUnlocked.add('radar_engineer');
-    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'radar_engineer')!;
+  const hasBranchSolved = completedKeys.some(k => k.includes('t5_l8') || k.includes('t5_l9'));
+  if (hasBranchSolved && !currentUnlocked.has('branch_selector')) {
+    currentUnlocked.add('branch_selector');
+    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'branch_selector')!;
     newlyUnlocked.push(ach);
     totalBonusXp += ach.xpReward;
   }
 
-  const hasRadarMaster = completedKeys.some(k => k.includes('t5_l10'));
-  if (hasRadarMaster && !currentUnlocked.has('quantum_radar_master')) {
-    currentUnlocked.add('quantum_radar_master');
-    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'quantum_radar_master')!;
+  const hasSpinMaster = completedKeys.some(k => k.includes('t5_l10'));
+  if (hasSpinMaster && !currentUnlocked.has('spin_master')) {
+    currentUnlocked.add('spin_master');
+    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'spin_master')!;
     newlyUnlocked.push(ach);
     totalBonusXp += ach.xpReward;
   }

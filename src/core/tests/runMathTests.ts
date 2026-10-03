@@ -42,15 +42,14 @@ import {
   sampleBinomialExperiment,
 } from '../engines/tunnelingEngine.ts';
 import {
-  simulateQPE,
-  sampleQPEMeasurements,
-  evaluatePhaseLevel,
-  evaluateQuantumRadarLevel,
-  verifyQFTUnitarity,
-  calculateCircularDistance,
-  binaryFractionToPhase,
-  phaseToBinaryFraction,
-} from '../engines/phaseEstimationEngine.ts';
+  calculateSpinMeasurement,
+  collapseSpinState,
+  calculateSequentialSpin,
+  sampleSpinExperiment,
+  angleToAxis2D,
+  evaluateSpinSplitterLevel,
+  type SpinSplitterState,
+} from '../engines/spinSplitterEngine.ts';
 import { TRACK_5_LEVELS } from '../levels/track5Levels.ts';
 
 let passed = 0;
@@ -297,160 +296,170 @@ console.log('\n[Track 4] Quantum Tunneling (Tunnel Run) Physics Engine:');
   assert(successEval.status === 'success', 'Transmission within target tolerance returns status=success');
 }
 
-// TRACK 5 TESTS: QUANTUM PHASE ESTIMATION (QUANTUM RADAR)
-console.log('\n[Track 5] Quantum Phase Estimation (Quantum Radar) Engine:');
+// TRACK 5 TESTS: QUANTUM SPIN & MEASUREMENT (SPIN SPLITTER)
+console.log('\n[Track 5] Quantum Spin & Measurement (Spin Splitter) Engine:');
 {
-  // 1. Exact Dyadic Eigenphase Reconstruction
-  const qpe3 = simulateQPE(0.375, 3);
-  assert(qpe3.mostProbableBitString === '011', 'QPE identifies bitstring 011 for phi=0.375 (3-bit)');
-  assert(approx(qpe3.mostProbablePhase, 0.375), 'QPE identified decimal phase is 0.375');
-  assert(approx(qpe3.theoreticalPeakProb, 1.0, 1e-4), 'Exact dyadic phase has 100% peak probability in ideal simulation');
+  // 1. Fundamental Spin-1/2 Measurement Probability Formula
+  const rZ = angleToAxis2D(0);       // +Z (0, 0, 1)
+  const nZ = angleToAxis2D(0);       // +Z
+  const nX = angleToAxis2D(90);      // +X (1, 0, 0)
+  const nNegZ = angleToAxis2D(180);  // -Z (0, 0, -1)
 
-  const qpe2 = simulateQPE(0.25, 2);
-  assert(qpe2.mostProbableBitString === '01', 'QPE identifies bitstring 01 for phi=0.25 (2-bit)');
-  assert(approx(qpe2.mostProbablePhase, 0.25), '2-bit QPE gives 0.250');
+  // Aligned: r = n -> P(+) = 1.0, P(-) = 0.0
+  const mAligned = calculateSpinMeasurement(rZ, nZ);
+  assert(approx(mAligned.probPlus, 1.0), 'Aligned spin: r = n -> P(+) = 1.0');
+  assert(approx(mAligned.probMinus, 0.0), 'Aligned spin: r = n -> P(-) = 0.0');
+  assert(approx(mAligned.probPlus + mAligned.probMinus, 1.0), 'Probability conservation: P(+) + P(-) = 1.0');
 
-  const qpe4 = simulateQPE(0.4375, 4);
-  assert(qpe4.mostProbableBitString === '0111', '4-bit QPE resolves 7/16 = 0.4375 into bitstring 0111');
-  assert(approx(qpe4.mostProbablePhase, 0.4375), '4-bit QPE identified phase is 0.4375');
+  // Opposite: r = -n -> P(+) = 0.0, P(-) = 1.0
+  const mOpposite = calculateSpinMeasurement(rZ, nNegZ);
+  assert(approx(mOpposite.probPlus, 0.0), 'Opposite spin: r = -n -> P(+) = 0.0');
+  assert(approx(mOpposite.probMinus, 1.0), 'Opposite spin: r = -n -> P(-) = 1.0');
 
-  // 2. Unitarity of Inverse QFT Matrix
-  assert(verifyQFTUnitarity(2), 'Inverse QFT matrix is strictly unitary for 2 qubits (QFT† * QFT = I)');
-  assert(verifyQFTUnitarity(3), 'Inverse QFT matrix is strictly unitary for 3 qubits');
-  assert(verifyQFTUnitarity(4), 'Inverse QFT matrix is strictly unitary for 4 qubits');
+  // Orthogonal: r · n = 0 -> P(+) = 0.5, P(-) = 0.5
+  const mOrtho = calculateSpinMeasurement(rZ, nX);
+  assert(approx(mOrtho.probPlus, 0.5), 'Orthogonal spin: r · n = 0 -> P(+) = 0.5 (50%)');
+  assert(approx(mOrtho.probMinus, 0.5), 'Orthogonal spin: r · n = 0 -> P(-) = 0.5 (50%)');
 
-  // 3. Periodic Circular Distance
-  assert(approx(calculateCircularDistance(0.99, 0.01), 0.02), 'Circular distance handles periodic boundary (0.99 to 0.01 is 0.02)');
-  assert(approx(calculateCircularDistance(0.25, 0.75), 0.50), 'Circular distance handles antipodal phases (0.25 to 0.75 is 0.50)');
+  // 60-degree separation: P(+) = cos²(30°) = 0.75, P(-) = sin²(30°) = 0.25
+  const n60 = angleToAxis2D(60);
+  const m60 = calculateSpinMeasurement(rZ, n60);
+  assert(approx(m60.probPlus, 0.75, 1e-3), '60° angle: P(+) = cos²(30°) = 0.75 (75%)');
+  assert(approx(m60.probMinus, 0.25, 1e-3), '60° angle: P(-) = sin²(30°) = 0.25 (25%)');
 
-  // 4. Binary Fraction Conversions
-  assert(approx(binaryFractionToPhase('011'), 0.375), 'binaryFractionToPhase maps 011 -> 0.375');
-  assert(phaseToBinaryFraction(0.375, 3) === '011', 'phaseToBinaryFraction maps 0.375 -> 011 for 3 bits');
-  assert(approx(binaryFractionToPhase('0111'), 0.4375), 'binaryFractionToPhase maps 0111 -> 0.4375');
+  // 2. Quantum State Collapse (Von Neumann Projection)
+  const collapsePlus = collapseSpinState(nX, '+');
+  assert(approx(collapsePlus.x, 1.0) && approx(collapsePlus.z, 0.0), 'State collapse (+) projects state to r\' = +n');
+  const collapseMinus = collapseSpinState(nX, '-');
+  assert(approx(collapseMinus.x, -1.0) && approx(collapseMinus.z, 0.0), 'State collapse (-) projects state to r\' = -n');
 
-  // 5. Probabilistic Measurement Sampling
-  const shots = 100;
-  const sampledCounts = sampleQPEMeasurements(qpe3, shots);
-  const totalCounts = Object.values(sampledCounts).reduce((a, b) => a + b, 0);
-  assert(totalCounts === shots, 'sampleQPEMeasurements samples exactly requested number of shots');
-  assert((sampledCounts['011'] || 0) === shots, 'Dominant dyadic outcome captures 100% of counts in ideal measurement');
+  // 3. Sequential Measurements & Measurement Disturbance
+  // Initial r = +Z, Analyzer 1 at +X -> collapse to +X -> Analyzer 2 at +Z yields 50/50
+  const seqDisturbance = calculateSequentialSpin(rZ, nX, '+', nZ);
+  assert(approx(seqDisturbance.analyzer1.probPlus, 0.5), 'Analyzer 1 measures 50% + on orthogonal +X axis');
+  assert(approx(seqDisturbance.collapsedState.x, 1.0), 'Particle collapsed to +X along selected + branch');
+  assert(approx(seqDisturbance.finalProbPlus, 0.5), 'Sequential Analyzer 2 at +Z yields 50% +, proving measurement disturbance');
 
-  // 6. Non-exact continuous phase diffraction spread
-  const nonExactQPE = simulateQPE(0.3125, 3);
-  assert(nonExactQPE.probabilities.length === 8, 'Non-exact phase simulation returns complete 8-bin probability vector');
-  const sumProb = nonExactQPE.probabilities.reduce((acc, p) => acc + p.prob, 0);
-  assert(approx(sumProb, 1.0, 1e-4), 'Non-exact phase distribution strictly conserves total probability = 1.0');
+  // Sequential Measurement: Analyzer 1 at +X, select + branch -> Analyzer 2 at +X yields 100%
+  const seqPrepared = calculateSequentialSpin(rZ, nX, '+', nX);
+  assert(approx(seqPrepared.finalProbPlus, 1.0), 'Analyzer 2 measuring prepared +X state along +X yields 100% +');
 
-  // 7. Track 5 Level 1 Configuration & Universal Evaluator
-  const level1 = TRACK_5_LEVELS[0];
-
-  // No input -> unstarted
-  const unstartedRadar = evaluateQuantumRadarLevel(
-    {
-      selectedSignalId: null,
-      selectedPrecisionBits: 2,
-      hasRunQPE: false,
-      measurementCounts: null,
-      totalShotsSampled: 0,
-      playerPhaseEstimate: null,
-      isLocked: false,
-      scansUsed: 0,
-    },
-    level1
+  // 4. Random Sampling Test (P(+) = 0.75 over 10,000 samples)
+  const sampleResult = sampleSpinExperiment(0.75, 10000);
+  assert(sampleResult.shots === 10000, 'sampleSpinExperiment samples exactly requested particle count');
+  assert(sampleResult.countPlus + sampleResult.countMinus === 10000, 'Total sampled counts sum to total shots');
+  const sampleFreqPlus = sampleResult.countPlus / 10000;
+  assert(
+    sampleFreqPlus >= 0.73 && sampleFreqPlus <= 0.77,
+    '10,000 binomial samples statistically converge to 75% ± 2%'
   );
-  assert(unstartedRadar.status === 'unstarted', 'No signal selected returns status=unstarted');
 
-  // Signal selected, no QPE run -> incomplete
-  const incompleteRadar = evaluateQuantumRadarLevel(
+  // 5. Evaluator QA: No-input rule (Level 1)
+  const lvl1 = TRACK_5_LEVELS[0];
+  const unstartedEval = evaluateSpinSplitterLevel(
     {
-      selectedSignalId: 'S2',
-      selectedPrecisionBits: 2,
-      hasRunQPE: false,
-      measurementCounts: null,
-      totalShotsSampled: 0,
-      playerPhaseEstimate: null,
-      isLocked: false,
-      scansUsed: 0,
+      analyzer1Angle: 0,
+      selectedBranch: '+',
+      hasRunExperiment: false,
+      experimentSample: null,
+      experimentsUsed: 0,
     },
-    level1
+    lvl1
   );
-  assert(incompleteRadar.status === 'incomplete', 'Signal selected without QPE run returns status=incomplete');
+  assert(unstartedEval.status === 'unstarted', 'No input/experiment on Level 1 returns status=unstarted');
 
-  // Wrong signal selected -> incorrect
-  const wrongSignalRadar = evaluateQuantumRadarLevel(
+  // Level 1: Run experiment with correct orientation (0°) -> success
+  const lvl1Success = evaluateSpinSplitterLevel(
     {
-      selectedSignalId: 'S1', // S1 is Alpha, target is S2 Beta
-      selectedPrecisionBits: 2,
-      hasRunQPE: true,
-      measurementCounts: { '01': 100 },
-      totalShotsSampled: 100,
-      playerPhaseEstimate: 0.20,
-      isLocked: true,
-      scansUsed: 1,
+      analyzer1Angle: 0,
+      selectedBranch: '+',
+      hasRunExperiment: true,
+      experimentSample: sampleSpinExperiment(1.0, 50),
+      experimentsUsed: 1,
     },
-    level1
+    lvl1
   );
-  assert(wrongSignalRadar.status === 'incorrect', 'Wrong signal selected returns status=incorrect');
+  assert(lvl1Success.status === 'success', 'Valid orientation + experiment on Level 1 returns status=success');
 
-  // Right signal, wrong estimate -> incorrect
-  const wrongEstimateRadar = evaluateQuantumRadarLevel(
+  // Level 2: Wrong angle -> incorrect
+  const lvl2 = TRACK_5_LEVELS[1];
+  const lvl2Wrong = evaluateSpinSplitterLevel(
     {
-      selectedSignalId: 'S2',
-      selectedPrecisionBits: 2,
-      hasRunQPE: true,
-      measurementCounts: { '10': 100 },
-      totalShotsSampled: 100,
-      playerPhaseEstimate: 0.15,
-      isLocked: true,
-      scansUsed: 1,
+      analyzer1Angle: 0, // Target is 90° (50/50), 0° yields 100%
+      selectedBranch: '+',
+      hasRunExperiment: true,
+      experimentSample: sampleSpinExperiment(1.0, 50),
+      experimentsUsed: 1,
     },
-    level1
+    lvl2
   );
-  assert(wrongEstimateRadar.status === 'incorrect', 'Estimate outside tolerance returns status=incorrect');
+  assert(lvl2Wrong.status === 'incorrect', 'Wrong analyzer orientation on Level 2 returns status=incorrect');
 
-  // Right signal, correct estimate -> success
-  const successRadar = evaluateQuantumRadarLevel(
+  // Level 2: 90° angle -> success
+  const lvl2Success = evaluateSpinSplitterLevel(
     {
-      selectedSignalId: 'S2',
-      selectedPrecisionBits: 2,
-      hasRunQPE: true,
-      measurementCounts: { '10': 100 },
-      totalShotsSampled: 100,
-      playerPhaseEstimate: 0.50,
-      isLocked: true,
-      scansUsed: 1,
+      analyzer1Angle: 90,
+      selectedBranch: '+',
+      hasRunExperiment: true,
+      experimentSample: sampleSpinExperiment(0.5, 50),
+      experimentsUsed: 1,
     },
-    level1
+    lvl2
   );
-  assert(successRadar.status === 'success', 'Correct signal and estimate within tolerance returns status=success');
+  assert(lvl2Success.status === 'success', '90° orientation on Level 2 returns status=success (50/50 split)');
 
-  // 8. Verify Solvability of all 10 Track 5 Levels
+  // Level 6: Wrong branch selected -> incorrect
+  const lvl6 = TRACK_5_LEVELS[5]; // Requires + branch
+  const lvl6WrongBranch = evaluateSpinSplitterLevel(
+    {
+      analyzer1Angle: 90,
+      analyzer2Angle: 90,
+      selectedBranch: '-', // Wrong branch!
+      hasRunExperiment: true,
+      experimentSample: sampleSpinExperiment(1.0, 50),
+      experimentsUsed: 1,
+    },
+    lvl6
+  );
+  assert(lvl6WrongBranch.status === 'incorrect', 'Selecting wrong branch in sequential level returns status=incorrect');
+
+  // 6. Mathematical Solvability of all 10 Track 5 Levels
   let all10Solvable = true;
   for (const lvl of TRACK_5_LEVELS) {
-    const targetSig = lvl.signals.find(s => s.id === lvl.targetSignalId);
-    if (!targetSig) {
-      all10Solvable = false;
-      break;
-    }
-    const evalResult = evaluateQuantumRadarLevel(
+    // Determine expected solution angle for level
+    let a1 = lvl.analyzer1InitialAngle;
+    let a2 = lvl.analyzer2InitialAngle;
+    let branch = lvl.targetBranch || '+';
+
+    if (lvl.id === 't5_l1') a1 = 0;
+    if (lvl.id === 't5_l2') a1 = 90;
+    if (lvl.id === 't5_l3') a1 = 120;
+    if (lvl.id === 't5_l4') a1 = 60;
+    if (lvl.id === 't5_l5') a1 = 180;
+    if (lvl.id === 't5_l6') { a1 = 90; a2 = 90; branch = '+'; }
+    if (lvl.id === 't5_l7') { a1 = 90; a2 = 0; branch = '+'; }
+    if (lvl.id === 't5_l8') { a1 = 90; a2 = 30; branch = '+'; }
+    if (lvl.id === 't5_l9') a1 = 60;
+    if (lvl.id === 't5_l10') { a1 = 0; a2 = 53; branch = '+'; }
+
+    const res = evaluateSpinSplitterLevel(
       {
-        selectedSignalId: lvl.targetSignalId,
-        selectedPrecisionBits: lvl.requiredPrecisionBits || 3,
-        hasRunQPE: true,
-        measurementCounts: { '00': 100 },
-        totalShotsSampled: 100,
-        playerPhaseEstimate: targetSig.truePhase,
-        isLocked: true,
-        scansUsed: 1,
+        analyzer1Angle: a1,
+        analyzer2Angle: a2,
+        selectedBranch: branch,
+        hasRunExperiment: true,
+        experimentSample: sampleSpinExperiment(lvl.targetProbPlus, 50),
+        experimentsUsed: 1,
       },
       lvl
     );
-    if (evalResult.status !== 'success') {
+
+    if (res.status !== 'success') {
       all10Solvable = false;
-      console.error(`Level ${lvl.id} failed verification: ${evalResult.feedback}`);
+      console.error(`Track 5 Level ${lvl.id} failed solvability test: ${res.feedback}`);
     }
   }
-  assert(all10Solvable, 'All 10 Track 5 Quantum Radar levels are mathematically verified solvable');
+  assert(all10Solvable, 'All 10 Track 5 Spin Splitter levels are mathematically verified solvable');
 }
 
 console.log('\n[Education & Hints] Intelligent Hint Engine & Track Intros:');

@@ -67,11 +67,11 @@ export const ACTIVE_TRACKS: TrackMetadata[] = [
   {
     id: 'phase-estimation',
     trackNumber: 5,
-    title: 'Quantum Phase Estimation',
-    gameName: 'Quantum Radar',
-    tagline: 'Locate quantum signals and estimate hidden phases.',
-    description: 'Operate a quantum radar system. Scan unknown signal sources, execute real Quantum Phase Estimation circuits with inverse QFT, and lock onto target eigenphases with precision.',
-    icon: 'Radio',
+    title: 'Quantum Spin & Measurement',
+    gameName: 'Spin Splitter',
+    tagline: 'Rotate the analyzer and control where particles appear.',
+    description: 'Experiment with spin-1/2 particles and Stern–Gerlach analyzers. Rotate measurement axes, observe state collapse, and navigate sequential quantum measurements.',
+    icon: 'Compass',
     color: '#F59E0B', // Amber
     levelCount: TRACK_5_LEVELS.length,
   },

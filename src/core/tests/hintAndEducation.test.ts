@@ -89,16 +89,17 @@ describe('Intelligent Track-Aware Hint System', () => {
     expect(h.title).toContain('Key Parameter Focus');
   });
 
-  it('Track 5 hints evaluate true phase vs player estimate', () => {
-    const lvl = TRACK_5_LEVELS[0];
+  it('Track 5 hints evaluate analyzer orientation vs target probability', () => {
+    const lvl = TRACK_5_LEVELS[1]; // Target: 50% +, initial is 0° yielding 100% +
     const h = generateTrackHint({
       trackId: 'phase-estimation',
       level: lvl,
-      state: 0.1,
+      state: { analyzer1Angle: 0, hasRunExperiment: true },
       tier: 2,
       hasInteracted: true,
     });
-    expect(h.title).toContain('Estimate Direction');
+    expect(h.title).toContain('Rotation Direction');
+    expect(h.body).toContain('Rotate your active analyzer further away');
   });
 });
 
@@ -137,7 +138,11 @@ describe('Educational Data & Curriculum Completeness', () => {
       'particle-energy',
       'transmission-probability',
       'target-probability',
-      'phase-estimator',
+      'source-spin',
+      'spin-analyzer',
+      'detector',
+      'branch',
+      'second-analyzer',
     ];
 
     for (const compId of requiredComponents) {
