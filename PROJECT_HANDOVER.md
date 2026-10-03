@@ -83,7 +83,9 @@ Track 5 was completely replaced with **Spin Splitter**:
    - Added `sendEvaluation` during needle rotation and branch changes.
    - Added automatic synchronization for global resets from `TrackHeader` / `MissionCard`.
    - Wired `onOpenComponentHelp` to the global educational popup system.
-5. **Quality Assurance & Verification:**
+5. **Native CSS Design System (`src/styles/track5.css`):**
+   - Replaced all non-functional Tailwind utility classes with a dedicated Vanilla CSS stylesheet (`src/styles/track5.css`) imported into `src/index.css`. Restored all card containers, comparison bars, stepper buttons, preset pills, status badges, and experimental results readouts to the app's scientific light theme.
+6. **Quality Assurance & Verification:**
    - 72 vitest unit and regression tests passing.
    - TypeScript build (`tsc -b && vite build`) passing with 0 errors.
    - Pushed cleanly to `origin/main`.
