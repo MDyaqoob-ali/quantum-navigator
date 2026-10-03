@@ -7,6 +7,7 @@ import { sphericalToCartesian, angularDistanceDegrees } from '../math/vector3';
 import { calculateInterference } from './interferenceEngine';
 import { simulateCircuit } from './gateSimulationEngine';
 import { stateFidelity } from '../math/statevector';
+import { calculateTunneling, TunnelingState } from './tunnelingEngine';
 
 export interface HintContext {
   trackId: TrackId;
@@ -36,8 +37,9 @@ export function generateTrackHint(ctx: HintContext): GeneratedHint {
       return generateGatesHint(level, state, clampedTier, ctx.hasInteracted);
     case 'quantum-interference':
       return generateInterferenceHint(level, state, clampedTier, ctx.hasInteracted);
+    case 'quantum-tunneling':
     case 'error-correction':
-      return generateQecHint(level, state, clampedTier, ctx.hasInteracted);
+      return generateTunnelingHint(level, state, clampedTier, ctx.hasInteracted);
     case 'phase-estimation':
       return generatePhaseHint(level, state, clampedTier, ctx.hasInteracted);
     default:
@@ -347,118 +349,163 @@ function generateInterferenceHint(level: any, paths: any[], tier: number, hasInt
 }
 
 // -------------------------------------------------------------
-// TRACK 4: QUANTUM ERROR CORRECTION HINTS
+// TRACK 4: QUANTUM TUNNELING HINTS
 // -------------------------------------------------------------
-function generateQecHint(level: any, actionState: any, tier: number, hasInteracted = false): GeneratedHint {
-  const errorLevel = level.errorLevel;
-  const isBitFlip = errorLevel.errorType === 'bit-flip';
-  const corruptedIdx = errorLevel.corruptedQubitIndex;
-  const targetQubitName = corruptedIdx >= 0 ? `Q${corruptedIdx + 1}` : 'None';
-  const reqGate = isBitFlip ? 'X' : 'Z';
-
-  // Read action / shield state
-  const selectedQubit = actionState?.selectedQubit ?? actionState?.targetQubit ?? null;
-  const selectedGate = actionState?.selectedOperation ?? actionState?.gate ?? null;
-  const applied = actionState?.isApplied ?? actionState?.applied ?? false;
-  const phase = actionState?.phase ?? 'repair';
-  const s1Checked = actionState?.diagnosticChecks?.s1Checked ?? true;
-  const s2Checked = actionState?.diagnosticChecks?.s2Checked ?? true;
-
-  // State-specific contextual suggestions
-  if (phase === 'message' || phase === 'encode') {
-    return {
-      tier,
-      maxTier: 4,
-      title: 'Protect Logical State',
-      body: 'Start by encoding the quantum message into a 3-qubit redundant codeword (|0_L⟩ → |000⟩ or |1_L⟩ → |111⟩) so it survives transmission.',
-      actionableDirection: 'Click [ENCODE MESSAGE] then send through the channel.',
-      isClose: false,
-    };
-  }
-
-  if (phase === 'diagnose' && (!s1Checked || !s2Checked)) {
-    return {
-      tier,
-      maxTier: 4,
-      title: 'Run Diagnostic Checks',
-      body: 'Start by checking the syndrome. Probe both parity checks [CHECK S1] and [CHECK S2] to inspect relative differences without collapsing the message.',
-      actionableDirection: 'Click [CHECK S1] and [CHECK S2].',
-      isClose: false,
-    };
-  }
-
-  if (selectedQubit !== null && selectedQubit !== corruptedIdx) {
-    return {
-      tier,
-      maxTier: 4,
-      title: 'Re-evaluate Diagnosis',
-      body: `You selected Q${selectedQubit + 1}, but check the parity syndrome clues again. 10 indicates Q1, 11 indicates middle Q2, and 01 indicates Q3.`,
-      actionableDirection: `Re-examine syndrome and select ${targetQubitName}.`,
-      isClose: false,
-    };
-  }
-
-  if (selectedQubit === corruptedIdx && selectedGate !== null && selectedGate !== reqGate) {
-    return {
-      tier,
-      maxTier: 4,
-      title: 'Operation Mismatch',
-      body: isBitFlip
-        ? `The diagnosed error is a bit flip, while gate [${selectedGate}] applies a phase shift. Bit flips require Pauli-X.`
-        : `The diagnosed error is a phase flip, while gate [${selectedGate}] applies a bit flip. Phase flips require Pauli-Z.`,
-      actionableDirection: `Switch gate to [${reqGate}].`,
-      isClose: false,
-    };
-  }
-
-  if (tier === 1) {
+function generateTunnelingHint(level: any, liveState: any, tier: number, hasInteracted = false): GeneratedHint {
+  const tunnelLevel = level.tunnelingLevel;
+  if (!tunnelLevel) {
     return {
       tier: 1,
       maxTier: 4,
-      title: 'Syndrome Parity Rules',
-      body: `Read the parity syndrome bits: S1 checks parity between Q1 and Q2 (q1 ⊕ q2); S2 checks parity between Q2 and Q3 (q2 ⊕ q3). A "1" indicates a parity mismatch.`,
-      actionableDirection: 'Examine the syndrome readout panel.',
+      title: 'Tunneling Calibration',
+      body: 'Adjust parameters to hit the target transmission window.',
       isClose: false,
     };
   }
 
+  const targetT = tunnelLevel.targetTransmission;
+  const tol = tunnelLevel.targetTolerance;
+
+  const currentState: TunnelingState = liveState && liveState.barriers
+    ? liveState
+    : tunnelLevel.initialState;
+
+  const E = currentState.particleEnergy;
+  const barriers = currentState.barriers || [];
+  const minHeight = barriers.length > 0 ? Math.min(...barriers.map((b: any) => b.height)) : 1.0;
+
+  const result = calculateTunneling(currentState);
+  const currentT = result.transmission;
+  const errorDelta = Math.abs(currentT - targetT);
+  const isClose = errorDelta <= tol;
+
+  // If already in target range
+  if (isClose) {
+    return {
+      tier,
+      maxTier: 4,
+      title: 'Target In Range',
+      body: `Your probability is ${(currentT * 100).toFixed(1)}%, and the target range is ${((targetT - tol) * 100).toFixed(0)}%–${((targetT + tol) * 100).toFixed(0)}%. You are already in range! Click [RUN EXPERIMENT] to verify.`,
+      actionableDirection: 'Click [RUN EXPERIMENT]',
+      isClose: true,
+    };
+  }
+
+  // If E >= V0
+  if (E >= minHeight) {
+    return {
+      tier,
+      maxTier: 4,
+      title: 'Over-Barrier Regime',
+      body: `Particle energy E = ${E.toFixed(2)} meets or exceeds barrier height V0 = ${minHeight.toFixed(2)}. In quantum tunneling, keep E < V0 so the particle is in the classically forbidden zone.`,
+      actionableDirection: `Reduce Particle Energy below ${minHeight.toFixed(2)}`,
+      isClose: false,
+    };
+  }
+
+  // Tier 1: Conceptual Explanation
+  if (tier === 1) {
+    if (barriers.length > 1) {
+      return {
+        tier: 1,
+        maxTier: 4,
+        title: 'Multi-Barrier Quantum Interference',
+        body: `With multiple barriers, waves bouncing within the potential well interfere. At resonant energies, constructive interference spikes the transmission probability.`,
+        actionableDirection: 'Observe the wave profile in the central well.',
+        isClose: false,
+      };
+    }
+    if (tunnelLevel.adjustableEnergy && !barriers[0]?.adjustableWidth && !barriers[0]?.adjustableHeight) {
+      return {
+        tier: 1,
+        maxTier: 4,
+        title: 'Particle Energy & Tunneling',
+        body: `Particle energy E controls the decay rate inside the barrier: κ = √(2m(V0 - E))/ħ. Increasing energy reduces the barrier deficit, sharply increasing transmission.`,
+        actionableDirection: 'Adjust Particle Energy toward the barrier crest.',
+        isClose: false,
+      };
+    }
+    if (barriers[0]?.adjustableWidth && !tunnelLevel.adjustableEnergy) {
+      return {
+        tier: 1,
+        maxTier: 4,
+        title: 'Barrier Width & Exponential Decay',
+        body: `Tunneling transmission decays exponentially with barrier width (T ∝ e^(-2κa)). A wide barrier heavily dampens the wave function; thinning the barrier increases transmission.`,
+        actionableDirection: 'Observe how barrier thickness attenuates wave amplitude.',
+        isClose: false,
+      };
+    }
+    return {
+      tier: 1,
+      maxTier: 4,
+      title: 'Quantum Tunneling Principles',
+      body: `Target transmission is ${(targetT * 100).toFixed(0)}% ± ${(tol * 100).toFixed(0)}% (current: ${(currentT * 100).toFixed(1)}%). Wave penetration depends on the energy deficit (V0 - E) and spatial thickness a.`,
+      actionableDirection: 'Adjust controls to modulate wave penetration.',
+      isClose: false,
+    };
+  }
+
+  // Tier 2: Parameter Identification
   if (tier === 2) {
-    let mapping = '';
-    if (corruptedIdx === 0) mapping = 'Syndrome 10 means S1 failed (Q1 ⊕ Q2), indicating Qubit 1 has flipped.';
-    else if (corruptedIdx === 1) mapping = 'Syndrome 11 means both S1 and S2 failed, indicating the shared middle Qubit 2 has flipped.';
-    else if (corruptedIdx === 2) mapping = 'Syndrome 01 means S2 failed (Q2 ⊕ Q3), indicating Qubit 3 has flipped.';
-    else mapping = 'Syndrome 00 means all parities match (no error).';
+    const isTooLow = currentT < targetT;
+    let focus = 'Particle Energy';
+    if (barriers.some((b: any) => b.adjustableWidth)) {
+      focus = 'Barrier Width';
+    } else if (barriers.some((b: any) => b.adjustableHeight)) {
+      focus = 'Barrier Height';
+    }
 
     return {
       tier: 2,
       maxTier: 4,
-      title: 'Syndrome Diagnosis',
-      body: `${mapping} Select ${targetQubitName} in the Repair Toolbox.`,
-      actionableDirection: `Select ${targetQubitName}`,
-      isClose: selectedQubit === corruptedIdx,
+      title: 'Key Parameter Focus',
+      body: `Your transmission probability is ${isTooLow ? 'too low' : 'too high'} (${(currentT * 100).toFixed(1)}% vs ${(targetT * 100).toFixed(0)}%). Focus on adjusting ${focus}.`,
+      actionableDirection: isTooLow ? `Adjust ${focus} to increase wave transmission.` : `Adjust ${focus} to decrease wave transmission.`,
+      isClose: errorDelta <= tol * 2,
     };
   }
 
+  // Tier 3: Direction of Change
   if (tier === 3) {
+    const isTooLow = currentT < targetT;
+    let directionMsg = '';
+
+    if (tunnelLevel.adjustableEnergy && isTooLow) {
+      directionMsg = 'Increase Particle Energy while keeping E < V0 to reduce the exponential decay constant κ.';
+    } else if (tunnelLevel.adjustableEnergy && !isTooLow) {
+      directionMsg = 'Decrease Particle Energy to widen the energy barrier deficit and lower transmission.';
+    } else if (barriers[0]?.adjustableWidth && isTooLow) {
+      directionMsg = 'Decrease the Barrier Width. Thinning the barrier reduces spatial decay distance.';
+    } else if (barriers[0]?.adjustableWidth && !isTooLow) {
+      directionMsg = 'Increase the Barrier Width to absorb and reflect more of the incident wave.';
+    } else if (barriers[0]?.adjustableHeight && isTooLow) {
+      directionMsg = 'Lower the Barrier Height closer to the particle energy.';
+    } else {
+      directionMsg = 'Increase Barrier Height to steepen wave attenuation.';
+    }
+
     return {
       tier: 3,
       maxTier: 4,
-      title: 'Correction Gate Selection',
-      body: isBitFlip
-        ? `This error is a bit-flip. The Pauli [X] gate inverts computational basis states (|0⟩ ↔ |1⟩). Select gate [X].`
-        : `This error is a phase-flip. The Pauli [Z] gate inverts relative phase (+1 ↔ -1). Select gate [Z].`,
-      actionableDirection: `Choose [${reqGate}] from toolbox.`,
-      isClose: selectedQubit === corruptedIdx && selectedGate === reqGate,
+      title: 'Actionable Parameter Direction',
+      body: directionMsg,
+      actionableDirection: directionMsg,
+      isClose: errorDelta <= tol * 2,
     };
   }
+
+  // Tier 4: Concrete Guidance (Near-solution without auto-solving)
+  const targetPercent = (targetT * 100).toFixed(0);
+  const tolPercent = (tol * 100).toFixed(0);
+  const hintBody = tunnelLevel.hints?.[2] || `Fine-tune your active slider so current transmission enters ${targetPercent}% ± ${tolPercent}%.`;
 
   return {
     tier: 4,
     maxTier: 4,
-    title: 'Full Repair Sequence',
-    body: `1. Select ${targetQubitName}.\n2. Choose gate [${reqGate}].\n3. Click "Apply Repair".\n4. Click "Run Verification".`,
-    actionableDirection: `Apply [${reqGate}] to ${targetQubitName}`,
-    isClose: selectedQubit === corruptedIdx && selectedGate === reqGate && applied,
+    title: 'Precision Calibration Target',
+    body: hintBody,
+    actionableDirection: `Calibrate to ${targetPercent}% ± ${tolPercent}%`,
+    isClose: true,
   };
 }
 

@@ -34,17 +34,13 @@ import {
   WavePath,
 } from '../engines/interferenceEngine.ts';
 import {
-  calculateSyndrome,
-  evaluateRepairLevel,
-  encodeLogicalZero,
-  encodeLogicalOne,
-  applyBitFlip,
-  applyPhaseFlip,
-  identifyBitFlipLocation,
-  applyCorrection,
-  verifyEncodedState,
-  isQuantumShieldSolved,
-} from '../engines/errorCorrectionEngine.ts';
+  calculateKappa,
+  calculateWavenumber,
+  calculateSingleBarrierTransmission,
+  calculateMultiBarrierTransmission,
+  evaluateTunnelingLevel,
+  sampleBinomialExperiment,
+} from '../engines/tunnelingEngine.ts';
 import {
   simulateQPE,
   evaluatePhaseLevel,
@@ -194,75 +190,104 @@ console.log('\n[Track 3] Quantum Interference Wave Engine:');
   assert(evalSuccess.status === 'success', 'Matching detector probability returns status=success');
 }
 
-// TRACK 4 TESTS
-console.log('\n[Track 4] Quantum Error Correction (Quantum Shield) Engine:');
+// TRACK 4 TESTS: QUANTUM TUNNELING (TUNNEL RUN)
+console.log('\n[Track 4] Quantum Tunneling (Tunnel Run) Physics Engine:');
 {
-  // 1. Encoding functions
-  const zeroEncoded = encodeLogicalZero();
-  assert(zeroEncoded.length === 3 && zeroEncoded.every(q => q.value === 0 && q.phaseSign === 1), 'encodeLogicalZero returns |000⟩');
+  // 1. calculateKappa & calculateWavenumber
+  const kappa = calculateKappa(0.6, 1.0);
+  assert(Math.abs(kappa - Math.sqrt(0.8)) < 1e-6, 'calculateKappa returns sqrt(2m(V0 - E))/hbar');
 
-  const oneEncoded = encodeLogicalOne();
-  assert(oneEncoded.length === 3 && oneEncoded.every(q => q.value === 1 && q.phaseSign === 1), 'encodeLogicalOne returns |111⟩');
+  const kFree = calculateWavenumber(0.5);
+  assert(Math.abs(kFree - 1.0) < 1e-6, 'calculateWavenumber returns sqrt(2mE)/hbar');
 
-  // 2. Bit-flip & Phase-flip error engine
-  const flippedQ1 = applyBitFlip(encodeLogicalZero(), 0);
-  assert(flippedQ1[0].value === 1 && flippedQ1[1].value === 0 && flippedQ1[2].value === 0, 'applyBitFlip inverts Q1');
+  // 2. calculateSingleBarrierTransmission in tunneling regime (E < V0)
+  const resTunnel = calculateSingleBarrierTransmission(0.6, 1.0, 0.8);
+  assert(resTunnel.regime === 'tunneling', 'calculateSingleBarrierTransmission identifies tunneling regime for E < V0');
+  assert(resTunnel.transmission > 0 && resTunnel.transmission < 1, 'Tunneling transmission is non-zero and bounded in (0, 1)');
+  assert(Math.abs(resTunnel.transmission + resTunnel.reflection - 1.0) < 1e-6, 'Conservation of probability: T + R = 1');
 
-  const flippedQ2 = applyBitFlip(encodeLogicalZero(), 1);
-  assert(flippedQ2[1].value === 1, 'applyBitFlip inverts Q2');
+  // 3. Over-barrier transmission regime (E > V0)
+  const resOver = calculateSingleBarrierTransmission(1.4, 1.0, 0.8);
+  assert(resOver.regime === 'over-barrier', 'Over-barrier transmission regime correctly identified for E > V0');
+  assert(resOver.transmission > 0.8, 'High transmission for over-barrier regime');
 
-  const flippedQ3 = applyBitFlip(encodeLogicalZero(), 2);
-  assert(flippedQ3[2].value === 1, 'applyBitFlip inverts Q3');
+  // 4. Boundary equality (E = V0)
+  const resEqual = calculateSingleBarrierTransmission(1.0, 1.0, 0.8);
+  assert(resEqual.regime === 'barrier-equal', 'Boundary equality threshold correctly identified');
 
-  const phaseFlipped = applyPhaseFlip(encodeLogicalZero(), 1);
-  assert(phaseFlipped[1].phaseSign === -1, 'applyPhaseFlip inverts phaseSign of Q2');
+  // 5. Monotonic behavior verification (Section 55)
+  // 5a. Width increase reduces transmission
+  const tNarrow = calculateSingleBarrierTransmission(0.6, 1.0, 0.5).transmission;
+  const tWide = calculateSingleBarrierTransmission(0.6, 1.0, 1.2).transmission;
+  assert(tNarrow > tWide, 'Increasing barrier width monotonically suppresses tunneling transmission');
 
-  // 3. Syndrome calculations across all mappings
-  assert(calculateSyndrome(encodeLogicalZero()).syndromeString === '00', 'Syndrome 00 means no error');
-  assert(calculateSyndrome(flippedQ1).syndromeString === '10', 'Syndrome 10 identifies Q1 error');
-  assert(calculateSyndrome(flippedQ2).syndromeString === '11', 'Syndrome 11 identifies Q2 error');
-  assert(calculateSyndrome(flippedQ3).syndromeString === '01', 'Syndrome 01 identifies Q3 error');
+  // 5b. Height increase reduces transmission
+  const tLow = calculateSingleBarrierTransmission(0.5, 0.8, 0.8).transmission;
+  const tHigh = calculateSingleBarrierTransmission(0.5, 1.6, 0.8).transmission;
+  assert(tLow > tHigh, 'Increasing barrier height monotonically reduces tunneling transmission');
 
-  // 4. identifyBitFlipLocation mappings
-  assert(identifyBitFlipLocation('10') === 0, 'identifyBitFlipLocation("10") maps to Q1 (0)');
-  assert(identifyBitFlipLocation('11') === 1, 'identifyBitFlipLocation("11") maps to Q2 (1)');
-  assert(identifyBitFlipLocation('01') === 2, 'identifyBitFlipLocation("01") maps to Q3 (2)');
-  assert(identifyBitFlipLocation('00') === -1, 'identifyBitFlipLocation("00") maps to none (-1)');
+  // 5c. Energy increase increases transmission (for E < V0)
+  const tLowE = calculateSingleBarrierTransmission(0.3, 1.2, 0.8).transmission;
+  const tHighE = calculateSingleBarrierTransmission(0.8, 1.2, 0.8).transmission;
+  assert(tHighE > tLowE, 'Increasing particle energy below V0 monotonically increases tunneling transmission');
 
-  // 5. Corrections & Verifications
-  const repairedQ2 = applyCorrection(flippedQ2, 1, 'X');
-  assert(repairedQ2[1].value === 0, 'applyCorrection with X repairs Q2');
+  // 6. Multi-Barrier Transfer Matrix Method (TMM)
+  const multiRes = calculateMultiBarrierTransmission(0.65, [
+    { id: 'b1', height: 1.0, width: 0.4 },
+    { id: 'b2', height: 1.0, width: 0.4 },
+  ]);
+  assert(multiRes.transmission > 0 && multiRes.transmission <= 1, 'Multi-barrier TMM calculates valid bounded transmission');
+  assert(Math.abs(multiRes.transmission + multiRes.reflection - 1.0) < 1e-6, 'Multi-barrier TMM satisfies unitary probability conservation');
 
-  const verificationSuccess = verifyEncodedState(repairedQ2, 0);
-  assert(verificationSuccess.isRestored === true && verificationSuccess.syndrome === '00', 'verifyEncodedState confirms restoration to 000');
-  assert(isQuantumShieldSolved(repairedQ2, 0) === true, 'isQuantumShieldSolved returns true for restored state');
+  // 7. Binomial experiment sampling
+  const experiment = sampleBinomialExperiment(0.70, 100);
+  assert(experiment.trials === 100, 'sampleBinomialExperiment executes 100 trials');
+  assert(experiment.transmitted + experiment.reflected === 100, 'All particles accounted for: Transmitted + Reflected = Trials');
+  assert(experiment.transmitted > 40 && experiment.transmitted < 95, 'Sampled counts follow binomial distribution around theoretical T');
 
-  // 6. Wrong correction tests
-  const wrongRepaired = applyCorrection(flippedQ2, 0, 'X'); // Wrong qubit Q1
-  assert(verifyEncodedState(wrongRepaired, 0).isRestored === false, 'Wrong qubit correction fails verification');
-  assert(isQuantumShieldSolved(wrongRepaired, 0) === false, 'isQuantumShieldSolved returns false for wrong qubit');
-
-  // 7. Evaluator level test
-  const qecLevel = {
-    logicalValue: 0 as const,
-    errorType: 'bit-flip' as const,
-    corruptedQubitIndex: 1,
-    codeType: 'bit-flip-code' as const,
-    description: 'Q2 bit flip',
+  // 8. Evaluator level test (evaluateTunnelingLevel)
+  const testLevelConfig = {
+    id: 'test_t4',
+    trackId: 'quantum-tunneling' as const,
+    trackNumber: 4,
+    levelNumber: 1,
+    title: 'Test Level',
+    subtitle: 'Test',
+    description: 'Test',
+    difficulty: 'Beginner' as const,
+    educationalConcept: 'Test',
+    hints: ['Hint 1', 'Hint 2', 'Hint 3'],
+    initialState: {
+      particleEnergy: 0.30,
+      barriers: [{ id: 'b1', height: 1.0, width: 0.8, adjustableHeight: false, adjustableWidth: false }],
+    },
+    targetTransmission: 0.70,
+    targetTolerance: 0.03,
+    energyRange: { min: 0.15, max: 0.95 },
+    adjustableEnergy: true,
   };
-  const wrongQ = evaluateRepairLevel({
-    level: qecLevel,
-    action: { targetQubit: 0, gate: 'X', applied: true },
-    hasVerified: true,
-  });
-  assert(wrongQ.status === 'incorrect', 'Wrong qubit selection returns status=incorrect');
 
-  const correctQ = evaluateRepairLevel({
-    level: qecLevel,
-    action: { targetQubit: 1, gate: 'X', applied: true },
-    hasVerified: true,
-  });
-  assert(correctQ.status === 'success', 'Correct syndrome repair returns status=success');
+  // No-input rule
+  const unstartedEval = evaluateTunnelingLevel(testLevelConfig.initialState, testLevelConfig, 0, false);
+  assert(unstartedEval.status === 'unstarted', 'No input with initial state outside target returns status=unstarted');
+
+  // E >= V0 rejection in tunneling mode
+  const invalidEval = evaluateTunnelingLevel(
+    { particleEnergy: 1.2, barriers: [{ id: 'b1', height: 1.0, width: 0.8 }] },
+    testLevelConfig,
+    1,
+    true
+  );
+  assert(invalidEval.status === 'invalid', 'E >= V0 rejected with status=invalid in tunneling-mode levels');
+
+  // Target match
+  const successEval = evaluateTunnelingLevel(
+    { particleEnergy: 0.81, barriers: [{ id: 'b1', height: 1.0, width: 0.8 }] },
+    testLevelConfig,
+    1,
+    true
+  );
+  assert(successEval.status === 'success', 'Transmission within target tolerance returns status=success');
 }
 
 // TRACK 5 TESTS
@@ -332,17 +357,20 @@ console.log('\n[Education & Hints] Intelligent Hint Engine & Track Intros:');
   assert(h3.title.includes('Specific'), 'Hint tier 3 provides specific guidance');
 
   // Verify track intros exist for all 5 tracks
-  const tracks = ['bloch-sphere', 'quantum-gates', 'quantum-interference', 'error-correction', 'phase-estimation'] as const;
+  const tracks = ['bloch-sphere', 'quantum-gates', 'quantum-interference', 'quantum-tunneling', 'phase-estimation'] as const;
   for (const t of tracks) {
     const intro = TRACK_INTROS[t];
-    assert(!!intro && intro.walkthroughSteps.length === 4, `Track intro for ${t} has all 4 walkthrough steps`);
+    assert(!!intro && intro.walkthroughSteps.length >= 4, `Track intro for ${t} has at least 4 walkthrough steps`);
   }
 
   // Verify components exist
   assert(!!COMPONENT_HELP['bloch-sphere'], 'Bloch sphere component explanation exists');
   assert(!!COMPONENT_HELP['phase-dial'], 'Phase dial component explanation exists');
-  assert(!!COMPONENT_HELP['syndrome-bits'], 'Syndrome bits component explanation exists');
-  assert(!!COMPONENT_HELP['phase-flip-concept'], 'Phase-flip concept explanation exists');
+  assert(!!COMPONENT_HELP['particle'], 'Particle component explanation exists');
+  assert(!!COMPONENT_HELP['barrier'], 'Barrier component explanation exists');
+  assert(!!COMPONENT_HELP['barrier-height'], 'Barrier height component explanation exists');
+  assert(!!COMPONENT_HELP['barrier-width'], 'Barrier width component explanation exists');
+  assert(!!COMPONENT_HELP['transmission-probability'], 'Transmission probability component explanation exists');
 }
 
 console.log(`\n=== TEST RESULTS: ${passed} PASSED, ${failed} FAILED ===\n`);

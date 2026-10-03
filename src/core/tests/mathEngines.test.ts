@@ -34,19 +34,13 @@ import {
   WavePath,
 } from '../engines/interferenceEngine';
 import {
-  calculateSyndrome,
-  generateCorruptedState,
-  applyRepairToQubits,
-  evaluateRepairLevel,
-  encodeLogicalZero,
-  encodeLogicalOne,
-  applyBitFlip,
-  applyPhaseFlip,
-  identifyBitFlipLocation,
-  applyCorrection,
-  verifyEncodedState,
-  isQuantumShieldSolved,
-} from '../engines/errorCorrectionEngine';
+  calculateKappa,
+  calculateWavenumber,
+  calculateSingleBarrierTransmission,
+  calculateMultiBarrierTransmission,
+  evaluateTunnelingLevel,
+  sampleBinomialExperiment,
+} from '../engines/tunnelingEngine';
 import {
   simulateQPE,
   evaluatePhaseLevel,
@@ -250,109 +244,116 @@ describe('Track 3 — Quantum Interference Wave Engine', () => {
   });
 });
 
-describe('Track 4 — Quantum Error Correction Engine', () => {
-  it('correctly diagnoses syndromes for bit-flip repetition code', () => {
-    // 00 -> no error
-    expect(calculateSyndrome([
-      { index: 0, value: 0, phaseSign: 1 },
-      { index: 1, value: 0, phaseSign: 1 },
-      { index: 2, value: 0, phaseSign: 1 },
-    ]).syndromeString).toBe('00');
+describe('Track 4 — Quantum Tunneling (Tunnel Run) Physics Engine', () => {
+  it('calculates decay constant kappa and wavenumber k accurately', () => {
+    const kappa = calculateKappa(0.6, 1.0);
+    expect(kappa).toBeCloseTo(Math.sqrt(0.8), 5);
 
-    // 10 -> Q1 corrupted (0 XOR 1 = 1, 0 XOR 0 = 0 -> 10)
-    expect(calculateSyndrome([
-      { index: 0, value: 1, phaseSign: 1 },
-      { index: 1, value: 0, phaseSign: 1 },
-      { index: 2, value: 0, phaseSign: 1 },
-    ]).syndromeString).toBe('10');
-
-    // 11 -> Q2 corrupted (0 XOR 1 = 1, 1 XOR 0 = 1 -> 11)
-    expect(calculateSyndrome([
-      { index: 0, value: 0, phaseSign: 1 },
-      { index: 1, value: 1, phaseSign: 1 },
-      { index: 2, value: 0, phaseSign: 1 },
-    ]).syndromeString).toBe('11');
-
-    // 01 -> Q3 corrupted (0 XOR 0 = 0, 0 XOR 1 = 1 -> 01)
-    expect(calculateSyndrome([
-      { index: 0, value: 0, phaseSign: 1 },
-      { index: 1, value: 0, phaseSign: 1 },
-      { index: 2, value: 1, phaseSign: 1 },
-    ]).syndromeString).toBe('01');
+    const kFree = calculateWavenumber(0.5);
+    expect(kFree).toBeCloseTo(1.0, 5);
   });
 
-  it('encodes logical states and applies bit-flip and phase-flip errors', () => {
-    const q0 = encodeLogicalZero();
-    expect(q0.length).toBe(3);
-    expect(q0.every(q => q.value === 0 && q.phaseSign === 1)).toBe(true);
+  it('calculates single-barrier transmission across all regimes', () => {
+    // E < V0: tunneling regime
+    const tunnel = calculateSingleBarrierTransmission(0.6, 1.0, 0.8);
+    expect(tunnel.regime).toBe('tunneling');
+    expect(tunnel.transmission).toBeGreaterThan(0);
+    expect(tunnel.transmission).toBeLessThan(1);
+    expect(tunnel.transmission + tunnel.reflection).toBeCloseTo(1.0, 6);
 
-    const q1 = encodeLogicalOne();
-    expect(q1.length).toBe(3);
-    expect(q1.every(q => q.value === 1 && q.phaseSign === 1)).toBe(true);
+    // E > V0: over-barrier transmission
+    const over = calculateSingleBarrierTransmission(1.4, 1.0, 0.8);
+    expect(over.regime).toBe('over-barrier');
+    expect(over.transmission).toBeGreaterThan(0.8);
 
-    const flippedQ1 = applyBitFlip(encodeLogicalZero(), 0);
-    expect(flippedQ1[0].value).toBe(1);
-
-    const flippedQ2 = applyBitFlip(encodeLogicalZero(), 1);
-    expect(flippedQ2[1].value).toBe(1);
-
-    const flippedQ3 = applyBitFlip(encodeLogicalZero(), 2);
-    expect(flippedQ3[2].value).toBe(1);
-
-    const phaseFlipped = applyPhaseFlip(encodeLogicalZero(), 1);
-    expect(phaseFlipped[1].phaseSign).toBe(-1);
+    // E = V0: boundary threshold
+    const equal = calculateSingleBarrierTransmission(1.0, 1.0, 0.8);
+    expect(equal.regime).toBe('barrier-equal');
   });
 
-  it('maps all syndromes and locates bit-flip indices correctly', () => {
-    expect(identifyBitFlipLocation('10')).toBe(0); // Q1
-    expect(identifyBitFlipLocation('11')).toBe(1); // Q2
-    expect(identifyBitFlipLocation('01')).toBe(2); // Q3
-    expect(identifyBitFlipLocation('00')).toBe(-1); // None
+  it('satisfies physical monotonicity requirements in tunneling regime', () => {
+    // Width increase monotonically reduces transmission
+    const tNarrow = calculateSingleBarrierTransmission(0.6, 1.0, 0.5).transmission;
+    const tWide = calculateSingleBarrierTransmission(0.6, 1.0, 1.2).transmission;
+    expect(tNarrow).toBeGreaterThan(tWide);
+
+    // Height increase monotonically reduces transmission
+    const tLow = calculateSingleBarrierTransmission(0.5, 0.8, 0.8).transmission;
+    const tHigh = calculateSingleBarrierTransmission(0.5, 1.6, 0.8).transmission;
+    expect(tLow).toBeGreaterThan(tHigh);
+
+    // Energy increase below V0 monotonically increases transmission
+    const tLowE = calculateSingleBarrierTransmission(0.3, 1.2, 0.8).transmission;
+    const tHighE = calculateSingleBarrierTransmission(0.8, 1.2, 0.8).transmission;
+    expect(tHighE).toBeGreaterThan(tLowE);
   });
 
-  it('verifies correctly restored state and rejects corrupted states', () => {
-    const zero = encodeLogicalZero();
-    expect(verifyEncodedState(zero, 0).isRestored).toBe(true);
-    expect(isQuantumShieldSolved(zero, 0)).toBe(true);
-
-    const noisy = applyBitFlip(zero, 1);
-    expect(verifyEncodedState(noisy, 0).isRestored).toBe(false);
-    expect(isQuantumShieldSolved(noisy, 0)).toBe(false);
-
-    // Correct repair with X on Q2
-    const repaired = applyCorrection(noisy, 1, 'X');
-    expect(verifyEncodedState(repaired, 0).isRestored).toBe(true);
-    expect(isQuantumShieldSolved(repaired, 0)).toBe(true);
-
-    // Wrong repair with X on Q1
-    const wrongRepaired = applyCorrection(noisy, 0, 'X');
-    expect(verifyEncodedState(wrongRepaired, 0).isRestored).toBe(false);
+  it('calculates multi-barrier transmission using Transfer Matrix Method (TMM)', () => {
+    const multi = calculateMultiBarrierTransmission(0.65, [
+      { id: 'b1', height: 1.0, width: 0.4 },
+      { id: 'b2', height: 1.0, width: 0.4 },
+    ]);
+    expect(multi.transmission).toBeGreaterThan(0);
+    expect(multi.transmission).toBeLessThanOrEqual(1.0);
+    expect(multi.transmission + multi.reflection).toBeCloseTo(1.0, 6);
   });
 
-  it('rejects wrong qubit repair and accepts correct repair', () => {
-    const level = {
-      logicalValue: 0 as const,
-      errorType: 'bit-flip' as const,
-      corruptedQubitIndex: 1, // Q2 is corrupted to 1
-      codeType: 'bit-flip-code' as const,
-      description: 'Bit flip on Q2',
+  it('samples binomial experiment following calculated probability', () => {
+    const exp = sampleBinomialExperiment(0.70, 100);
+    expect(exp.trials).toBe(100);
+    expect(exp.transmitted + exp.reflected).toBe(100);
+    expect(exp.transmitted).toBeGreaterThan(40);
+    expect(exp.transmitted).toBeLessThan(95);
+  });
+
+  it('evaluates tunneling levels according to target tolerances and constraints', () => {
+    const levelConfig = {
+      id: 't4_test',
+      trackId: 'quantum-tunneling' as const,
+      trackNumber: 4,
+      levelNumber: 1,
+      title: 'Test',
+      subtitle: 'Test',
+      description: 'Test',
+      difficulty: 'Beginner' as const,
+      educationalConcept: 'Test',
+      hints: ['h1', 'h2', 'h3'],
+      initialState: {
+        particleEnergy: 0.30,
+        barriers: [{ id: 'b1', height: 1.0, width: 0.8, adjustableHeight: false, adjustableWidth: false }],
+      },
+      targetTransmission: 0.70,
+      targetTolerance: 0.03,
+      energyRange: { min: 0.15, max: 0.95 },
+      adjustableEnergy: true,
     };
 
-    // Wrong qubit (selected Q1 instead of Q2)
-    const wrongRes = evaluateRepairLevel({
-      level,
-      action: { targetQubit: 0, gate: 'X', applied: true },
-      hasVerified: true,
-    });
-    expect(wrongRes.status).toBe('incorrect');
+    // Unstarted
+    const unstarted = evaluateTunnelingLevel(levelConfig.initialState, levelConfig, 0, false);
+    expect(unstarted.status).toBe('unstarted');
 
-    // Correct qubit and gate (Q2 + X)
-    const correctRes = evaluateRepairLevel({
-      level,
-      action: { targetQubit: 1, gate: 'X', applied: true },
-      hasVerified: true,
-    });
-    expect(correctRes.status).toBe('success');
+    // Incomplete
+    const incomplete = evaluateTunnelingLevel(levelConfig.initialState, levelConfig, 1, true);
+    expect(incomplete.status).toBe('incomplete');
+
+    // Invalid (E >= V0)
+    const invalid = evaluateTunnelingLevel(
+      { particleEnergy: 1.2, barriers: [{ id: 'b1', height: 1.0, width: 0.8 }] },
+      levelConfig,
+      1,
+      true
+    );
+    expect(invalid.status).toBe('invalid');
+
+    // Success (E = 0.81 lands at T = 0.700)
+    const success = evaluateTunnelingLevel(
+      { particleEnergy: 0.81, barriers: [{ id: 'b1', height: 1.0, width: 0.8 }] },
+      levelConfig,
+      1,
+      true
+    );
+    expect(success.status).toBe('success');
+    expect(success.score).toBeGreaterThan(500);
   });
 });
 

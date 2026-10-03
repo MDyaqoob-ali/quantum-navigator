@@ -19,7 +19,7 @@ import {
 import { calculateBlochResultant, evaluateBlochLevel } from '../../core/engines/blochEngine';
 import { evaluateGateLevel } from '../../core/engines/gateSimulationEngine';
 import { calculateInterference, evaluateInterferenceLevel } from '../../core/engines/interferenceEngine';
-import { calculateSyndrome, evaluateRepairLevel } from '../../core/engines/errorCorrectionEngine';
+import { calculateSingleBarrierTransmission, calculateMultiBarrierTransmission, evaluateTunnelingLevel } from '../../core/engines/tunnelingEngine';
 import { simulateQPE, evaluatePhaseLevel } from '../../core/engines/phaseEstimationEngine';
 
 export const DebugQAView: React.FC = () => {
@@ -115,27 +115,27 @@ export const DebugQAView: React.FC = () => {
       results.push({ track: 'Track 3', name: 'Wave Engine Execution', passed: false, message: err.message });
     }
 
-    // Track 4 Tests
+    // Track 4 Tests: Quantum Tunneling (Tunnel Run)
     try {
-      const syn00 = calculateSyndrome([
-        { index: 0, value: 0, phaseSign: 1 },
-        { index: 1, value: 0, phaseSign: 1 },
-        { index: 2, value: 0, phaseSign: 1 },
+      const resT1 = calculateSingleBarrierTransmission(0.6, 1.0, 0.8);
+      const resT2 = calculateSingleBarrierTransmission(0.6, 1.0, 1.4);
+      // Width increase must exponentially suppress transmission
+      const monotonicWidth = resT1.transmission > resT2.transmission;
+      const resMulti = calculateMultiBarrierTransmission(0.65, [
+        { id: 'b1', height: 1.0, width: 0.4 },
+        { id: 'b2', height: 1.0, width: 0.4 },
       ]);
-      const syn11 = calculateSyndrome([
-        { index: 0, value: 0, phaseSign: 1 },
-        { index: 1, value: 1, phaseSign: 1 },
-        { index: 2, value: 0, phaseSign: 1 },
-      ]);
-      const t4Passed = syn00.syndromeString === '00' && syn11.syndromeString === '11' && syn11.indicatedQubitIndex === 1;
+      const t4Passed = monotonicWidth && resT1.transmission > 0.5 && resMulti.transmission > 0;
       results.push({
-        track: 'Track 4: Error Correction',
-        name: '3-Qubit Repetition Code Parity Syndromes (00 & 11)',
+        track: 'Track 4: Quantum Tunneling',
+        name: 'Schrödinger Barrier Transmission & Multi-Barrier TMM',
         passed: t4Passed,
-        message: t4Passed ? 'Syndrome extraction verified.' : 'Syndrome mapping error.',
+        message: t4Passed
+          ? `Physical transmission verified (T1=${(resT1.transmission * 100).toFixed(1)}%, T2=${(resT2.transmission * 100).toFixed(1)}%, Multi=${(resMulti.transmission * 100).toFixed(1)}%).`
+          : 'Tunneling probability calculation error.',
       });
     } catch (err: any) {
-      results.push({ track: 'Track 4', name: 'Error Correction Execution', passed: false, message: err.message });
+      results.push({ track: 'Track 4', name: 'Tunneling Engine Execution', passed: false, message: err.message });
     }
 
     // Track 5 Tests

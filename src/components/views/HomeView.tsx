@@ -8,6 +8,7 @@ import {
   Activity,
   ShieldCheck,
   Radio,
+  Zap,
   ArrowRight,
   Sparkles,
   Flame,
@@ -33,8 +34,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
         return <Cpu size={24} style={{ color: 'var(--accent-blue)' }} />;
       case 'quantum-interference':
         return <Activity size={24} style={{ color: 'var(--accent-teal)' }} />;
+      case 'quantum-tunneling':
       case 'error-correction':
-        return <ShieldCheck size={24} style={{ color: 'var(--accent-indigo)' }} />;
+        return <Zap size={24} style={{ color: '#8B5CF6' }} />;
       case 'phase-estimation':
         return <Radio size={24} style={{ color: 'var(--accent-amber)' }} />;
     }

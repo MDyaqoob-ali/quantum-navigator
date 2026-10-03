@@ -54,14 +54,14 @@ export const ACTIVE_TRACKS: TrackMetadata[] = [
     levelCount: TRACK_3_LEVELS.length,
   },
   {
-    id: 'error-correction',
+    id: 'quantum-tunneling',
     trackNumber: 4,
-    title: 'Quantum Error Correction',
-    gameName: 'Quantum Shield',
-    tagline: 'Protect, transmit, diagnose, and repair quantum information.',
-    description: 'Harness 3-qubit repetition codes. Transmit through noisy channels, extract parity syndromes to isolate corruptions, and execute verified quantum repairs.',
-    icon: 'ShieldCheck',
-    color: '#8B5CF6', // Purple/Violet
+    title: 'Quantum Tunneling',
+    gameName: 'Tunnel Run',
+    tagline: 'Tune particle energy and barrier geometries to hit target transmission.',
+    description: 'Explore wave penetration through finite potential barriers. Calibrate particle energy E < V0, barrier heights, and barrier widths across single and multi-barrier quantum systems.',
+    icon: 'Zap',
+    color: '#8B5CF6', // Scientific Violet
     levelCount: TRACK_4_LEVELS.length,
   },
   {
@@ -85,6 +85,7 @@ export function getTrackLevels(trackId: TrackId): any[] {
       return TRACK_2_LEVELS;
     case 'quantum-interference':
       return TRACK_3_LEVELS;
+    case 'quantum-tunneling':
     case 'error-correction':
       return TRACK_4_LEVELS;
     case 'phase-estimation':

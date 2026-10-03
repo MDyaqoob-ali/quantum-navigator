@@ -1,6 +1,6 @@
 import React from 'react';
 import { TrackId } from '../../core/types';
-import { Compass, Cpu, Activity, ShieldCheck, Radio, X, Check } from 'lucide-react';
+import { Compass, Cpu, Activity, ShieldCheck, Zap, Radio, X, Check } from 'lucide-react';
 
 interface TutorialModalProps {
   isOpen: boolean;
@@ -86,26 +86,27 @@ export const TutorialModal: React.FC<TutorialModalProps> = ({
             },
           ],
         };
+      case 'quantum-tunneling':
       case 'error-correction':
         return {
-          title: 'Track 4 Tutorial: Quantum Error Correction',
-          icon: <ShieldCheck size={24} style={{ color: 'var(--accent-indigo)' }} />,
+          title: 'Track 4 Tutorial: Quantum Tunneling (Tunnel Run)',
+          icon: <Zap size={24} style={{ color: '#8B5CF6' }} />,
           steps: [
             {
-              title: '1. Inspect the Syndrome Readout',
-              desc: 'Read the parity syndrome bits S1S2. Remember the syndrome key: 00 = No Error, 10 = Q1, 11 = Q2, 01 = Q3.',
+              title: '1. Incident Quantum Particle',
+              desc: 'A quantum particle approaching one or more potential barriers has total energy E and an incoming wave packet.',
             },
             {
-              title: '2. Select the Damaged Qubit',
-              desc: 'Click on Qubit 1, Qubit 2, or Qubit 3 in the quantum memory register.',
+              title: '2. Evanescent Penetration',
+              desc: 'When E < V0, classical mechanics forbids crossing. In quantum mechanics, an evanescent wave penetrates through the barrier, giving a non-zero transmission probability T.',
             },
             {
-              title: '3. Choose the Correction Tool',
-              desc: 'Pick [X] to fix bit flips (0 ↔ 1) or [Z] to restore phase signs (+ ↔ -).',
+              title: '3. Direct Physical Control',
+              desc: 'Drag sliders for Particle Energy E, Barrier Height V0, and Barrier Width a. Increasing energy or narrowing barriers boosts transmission.',
             },
             {
-              title: '4. Apply & Verify',
-              desc: 'Click "Apply Gate", then press "Verify & Repair" to confirm that the logical codeword has been restored.',
+              title: '4. Match Target & Run Experiment',
+              desc: 'Bring transmission probability into the target precision window (e.g. 70% ± 3%), then click "Run Experiment" to sample 100 quantum trials.',
             },
           ],
         };

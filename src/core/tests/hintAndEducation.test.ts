@@ -76,17 +76,17 @@ describe('Intelligent Track-Aware Hint System', () => {
     expect(h.body).toContain('Detector A');
   });
 
-  it('Track 4 hints identify the exact corrupted qubit from syndrome', () => {
-    const lvl = TRACK_4_LEVELS[0]; // Corrupted Q1 or Q2
+  it('Track 4 hints provide physical parameter guidance', () => {
+    const lvl = TRACK_4_LEVELS[0];
     const h = generateTrackHint({
-      trackId: 'error-correction',
+      trackId: 'quantum-tunneling',
       level: lvl,
-      state: { targetQubit: null, gate: null, applied: false },
+      state: lvl.tunnelingLevel.initialState,
       tier: 2,
       hasInteracted: true,
     });
-    expect(h.body).toContain('Syndrome');
-    expect(h.title).toContain('Syndrome Diagnosis');
+    expect(h.body).toContain('transmission probability');
+    expect(h.title).toContain('Key Parameter Focus');
   });
 
   it('Track 5 hints evaluate true phase vs player estimate', () => {
@@ -103,8 +103,8 @@ describe('Intelligent Track-Aware Hint System', () => {
 });
 
 describe('Educational Data & Curriculum Completeness', () => {
-  it('defines comprehensive track intros and 4 walkthrough steps for all 5 tracks', () => {
-    const trackIds = ['bloch-sphere', 'quantum-gates', 'quantum-interference', 'error-correction', 'phase-estimation'] as const;
+  it('defines comprehensive track intros and walkthrough steps for all 5 tracks', () => {
+    const trackIds = ['bloch-sphere', 'quantum-gates', 'quantum-interference', 'quantum-tunneling', 'phase-estimation'] as const;
     
     for (const tId of trackIds) {
       const intro = TRACK_INTROS[tId];
@@ -112,7 +112,7 @@ describe('Educational Data & Curriculum Completeness', () => {
       expect(intro.whatIsIt.length).toBeGreaterThan(10);
       expect(intro.howDoIPlay.length).toBeGreaterThan(10);
       expect(intro.whatWillILearn.length).toBeGreaterThan(2);
-      expect(intro.walkthroughSteps.length).toBe(4);
+      expect(intro.walkthroughSteps.length).toBeGreaterThanOrEqual(4);
     }
   });
 
@@ -130,8 +130,13 @@ describe('Educational Data & Curriculum Completeness', () => {
       'phase-dial',
       'beam-splitter',
       'detector-output',
-      'syndrome-bits',
-      'phase-flip-concept',
+      'particle',
+      'barrier',
+      'barrier-height',
+      'barrier-width',
+      'particle-energy',
+      'transmission-probability',
+      'target-probability',
       'phase-estimator',
     ];
 

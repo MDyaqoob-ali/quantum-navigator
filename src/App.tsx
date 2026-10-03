@@ -17,7 +17,7 @@ import { DebugQAView } from './components/views/DebugQAView';
 import { Track1Game } from './components/tracks/Track1Bloch/Track1Game';
 import { Track2Game } from './components/tracks/Track2Gates/Track2Game';
 import { Track3Game } from './components/tracks/Track3Interference/Track3Game';
-import { Track4Game } from './components/tracks/Track4ErrorCorrection/Track4Game';
+import { Track4Game } from './components/tracks/Track4Tunneling/Track4Game';
 import { Track5Game } from './components/tracks/Track5PhaseEstimation/Track5Game';
 
 import { Sparkles, X } from 'lucide-react';
@@ -145,6 +145,19 @@ export function App() {
     });
   };
 
+  // Open individual component help popup
+  const handleOpenComponentHelp = (componentId: string) => {
+    const item = COMPONENT_HELP[componentId];
+    if (item) {
+      setEduPopup({
+        isOpen: true,
+        type: 'component-help',
+        componentHelp: item,
+      });
+      markComponentIntroSeen(componentId);
+    }
+  };
+
   // Standardized Mission Telemetry across all 5 tracks
   const missionTelemetry: MissionTelemetry | undefined = useMemo(() => {
     if (!currentLevel) return undefined;
@@ -214,21 +227,24 @@ export function App() {
       };
     }
 
-    if (activeTrackId === 'error-correction') {
+    if (activeTrackId === 'quantum-tunneling' || activeTrackId === 'error-correction') {
       const isMatched = evaluation.status === 'success';
-      const targetVal = currentLevel.errorLevel?.logicalValue === 0 ? '000' : '111';
+      const targetT = currentLevel.tunnelingLevel?.targetTransmission ?? 0.70;
+      const tol = currentLevel.tunnelingLevel?.targetTolerance ?? 0.03;
+      const currentT = evaluation.details?.currentTransmission;
+      const err = evaluation.details?.error !== undefined
+        ? `${(evaluation.details.error * 100).toFixed(1)} pp`
+        : `Tol ±${(tol * 100).toFixed(0)}%`;
 
       return {
-        targetLabel: 'TARGET RESTORED STATE',
-        targetValue: `|${targetVal}⟩ (Logical |${currentLevel.errorLevel?.logicalValue === 0 ? '0_L' : '1_L'}⟩)`,
-        currentLabel: 'CURRENT REPAIRED STATE',
-        currentValue: evaluation.details?.repairedState
-          ? `|${evaluation.details.repairedState}⟩`
-          : (evaluation.details?.actualState ? `|${evaluation.details.actualState}⟩` : 'Corrupted State'),
-        errorLabel: 'SYNDROME S1S2',
-        errorValue: evaluation.details?.syndrome ? `S1S2 = ${evaluation.details.syndrome}` : 'Extracting Syndrome',
+        targetLabel: 'TARGET TRANSMISSION',
+        targetValue: `${(targetT * 100).toFixed(0)}% ± ${(tol * 100).toFixed(0)}%`,
+        currentLabel: 'CURRENT TRANSMISSION',
+        currentValue: currentT !== undefined ? `${(currentT * 100).toFixed(1)}%` : 'Adjust Parameters',
+        errorLabel: 'PROBABILITY ERROR',
+        errorValue: err,
         statusLabel: 'STATUS',
-        statusValue: isMatched ? '✓ STATE RESTORED' : (evaluation.status === 'incorrect' ? '❌ REPAIR FAILED' : 'DIAGNOSING'),
+        statusValue: isMatched ? '✓ TARGET MATCHED' : (evaluation.status === 'incorrect' ? 'NOT IN RANGE' : 'KEEP ADJUSTING'),
         isMatched,
       };
     }
@@ -431,13 +447,14 @@ export function App() {
             />
           )}
 
-          {activeTrackId === 'error-correction' && (
+          {(activeTrackId === 'quantum-tunneling' || activeTrackId === 'error-correction') && (
             <Track4Game
               level={currentLevel}
               evaluation={evaluation}
               onEvaluate={handleEvaluationSuccess}
               onRecordInteraction={recordInteraction}
               onNextLevel={handleNextLevel}
+              onOpenComponentHelp={handleOpenComponentHelp}
             />
           )}
 

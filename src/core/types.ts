@@ -14,6 +14,7 @@ export type TrackId =
   | 'bloch-sphere' 
   | 'quantum-gates' 
   | 'quantum-interference' 
+  | 'quantum-tunneling'
   | 'error-correction' 
   | 'phase-estimation';
 
