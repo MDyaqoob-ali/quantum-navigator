@@ -1,0 +1,392 @@
+/* Quantum Navigator — Non-Overlap Responsive Layout Architecture */
+
+/* Main App Shell Layout */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--bg-primary);
+  overflow-x: hidden;
+}
+
+/* TopBar Navigation */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: 64px;
+  background-color: rgba(251, 249, 245, 0.94);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.topbar-logo-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background-color: var(--accent-blue-light);
+  border: 1px solid rgba(29, 94, 153, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent-blue);
+}
+
+.topbar-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.topbar-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.topbar-nav-item {
+  padding: 7px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.topbar-nav-item:hover {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.topbar-nav-item.active {
+  background-color: var(--bg-card);
+  color: var(--accent-blue);
+  border-color: var(--border-medium);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.topbar-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Page Content Containers */
+.page-container {
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 24px 20px 48px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+}
+
+/* Track Header & Mission Area */
+.track-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 16px 20px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.track-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.track-number-chip {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  border-radius: var(--radius-sm);
+  background-color: var(--accent-blue-light);
+  color: var(--accent-blue);
+  border: 1px solid rgba(29, 94, 153, 0.2);
+}
+
+/* Level Navigation Bar */
+.level-select-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.level-chip-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  border: 1px solid var(--border-medium);
+  background-color: var(--bg-card);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.level-chip-btn:hover:not(:disabled) {
+  background-color: var(--bg-hover);
+  border-color: var(--border-dark);
+  color: var(--text-primary);
+}
+
+.level-chip-btn.active {
+  background-color: var(--accent-blue);
+  color: #FFFFFF;
+  border-color: var(--accent-blue);
+}
+
+.level-chip-btn.completed:not(.active) {
+  background-color: var(--accent-emerald-light);
+  color: var(--accent-emerald);
+  border-color: rgba(21, 128, 61, 0.3);
+}
+
+.level-chip-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background-color: var(--bg-secondary);
+  border-color: var(--border-subtle);
+}
+
+/* Mission Card */
+.mission-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 20px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-left: 4px solid var(--accent-blue);
+  border-radius: var(--radius-md);
+}
+
+.mission-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mission-objective {
+  font-size: 15px;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.mission-concept {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Primary Game Layout Grid (Non-Overlapping) */
+.game-layout-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+@media (max-width: 1024px) {
+  .game-layout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Game Area Container */
+.game-area-container {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  min-height: 480px;
+}
+
+.game-area-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background-color: var(--bg-card-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.game-area-canvas-wrapper {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  min-height: 420px;
+  overflow: hidden;
+}
+
+/* Control Panel Container */
+.control-panel-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+}
+
+.control-section-header {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Result & Feedback Panel */
+.result-panel-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+}
+
+.result-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+}
+
+.status-feedback-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-secondary);
+}
+
+.status-feedback-bar.status-success {
+  background-color: var(--accent-emerald-light);
+  border-color: rgba(21, 128, 61, 0.3);
+  color: #0F5E2C;
+}
+
+.status-feedback-bar.status-incorrect {
+  background-color: var(--vector-red-light);
+  border-color: rgba(211, 47, 47, 0.3);
+  color: var(--vector-red-dark);
+}
+
+.status-feedback-bar.status-incomplete {
+  background-color: var(--accent-amber-light);
+  border-color: rgba(180, 83, 9, 0.3);
+  color: #92400E;
+}
+
+/* Bloch Multi-Sphere Sub-Grid */
+.bloch-multi-sphere-grid {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+}
+
+.bloch-grid-1 {
+  grid-template-columns: 1fr;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.bloch-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.bloch-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bloch-grid-4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 768px) {
+  .bloch-grid-2, .bloch-grid-3, .bloch-grid-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.bloch-sphere-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  position: relative;
+}
+
+.bloch-sphere-box.active-drag {
+  border-color: var(--vector-red);
+  box-shadow: 0 0 0 2px rgba(211, 47, 47, 0.15);
+}
+
+.bloch-sphere-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
