@@ -9,9 +9,11 @@ import {
 import { EvaluationResult } from '../../../core/types';
 import { CircuitCanvas } from './CircuitCanvas';
 import { ResultPanel } from '../../common/ResultPanel';
+import { EducationalPopup } from '../../common/EducationalPopup';
+import { COMPONENT_HELP } from '../../../core/educationData';
 import { formatComplex } from '../../../core/math/complex';
 import { stateFidelity } from '../../../core/math/statevector';
-import { Plus, Trash2, Cpu } from 'lucide-react';
+import { Plus, Trash2, Cpu, HelpCircle } from 'lucide-react';
 
 interface Track2GameProps {
   level: GateLevelConfig;
@@ -30,6 +32,7 @@ export const Track2Game: React.FC<Track2GameProps> = ({
 }) => {
   const [circuit, setCircuit] = useState<PlacedGate[]>([]);
   const [selectedGateType, setSelectedGateType] = useState<GateType | null>('X');
+  const [activeHelpComponent, setActiveHelpComponent] = useState<string | null>(null);
   
   // Controlled gate configuration options
   const [cnotControl, setCnotControl] = useState<number>(0);
@@ -162,7 +165,17 @@ export const Track2Game: React.FC<Track2GameProps> = ({
 
         {/* Control Panel: Gate Palette & Target State */}
         <div className="control-panel-container" data-ui-zone="gate-palette-panel">
-          <div className="control-section-header">Gate Palette</div>
+          <div className="control-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Gate Palette</span>
+            <button
+              onClick={() => setActiveHelpComponent('gate-h')}
+              title="What do quantum gates do? (Free)"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600 }}
+            >
+              <HelpCircle size={13} />
+              <span>? Help</span>
+            </button>
+          </div>
 
           {/* Palette Buttons */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -238,7 +251,7 @@ export const Track2Game: React.FC<Track2GameProps> = ({
             </div>
           )}
 
-          {/* Current State vs Target Box */}
+          {/* Explicit Start, Current, and Target State Boxes (Section 23) */}
           <div
             style={{
               padding: '14px',
@@ -247,18 +260,32 @@ export const Track2Game: React.FC<Track2GameProps> = ({
               borderRadius: 'var(--radius-md)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '8px',
+              gap: '10px',
             }}
           >
             <div>
-              <span className="metric-label">Target State</span>
-              <div className="mono" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--accent-blue)', marginTop: '2px' }}>
+              <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                START STATE (Input Basis)
+              </div>
+              <div className="mono" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                |{level.gateLevel.initialBasis}⟩
+              </div>
+            </div>
+
+            <div style={{ paddingTop: '6px', borderTop: '1px solid var(--border-subtle)' }}>
+              <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--accent-blue)', textTransform: 'uppercase' }}>
+                TARGET STATE (Objective)
+              </div>
+              <div className="mono" style={{ fontSize: '14px', fontWeight: 700, color: 'var(--accent-blue)' }}>
                 {level.gateLevel.targetDescription}
               </div>
             </div>
-            <div>
-              <span className="metric-label">Circuit Produced State</span>
-              <div className="mono" style={{ fontSize: '14px', fontWeight: 500, color: 'var(--text-primary)', marginTop: '2px' }}>
+
+            <div style={{ paddingTop: '6px', borderTop: '1px solid var(--border-subtle)' }}>
+              <div style={{ fontSize: '10px', fontWeight: 800, color: liveFidelity >= 0.999 ? '#15803D' : '#D97706', textTransform: 'uppercase' }}>
+                CURRENT STATE (Circuit Output)
+              </div>
+              <div className="mono" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>
                 |ψ⟩ = {stateString}
               </div>
             </div>
@@ -291,6 +318,14 @@ export const Track2Game: React.FC<Track2GameProps> = ({
         runButtonLabel="Run Circuit"
         onNextLevel={onNextLevel}
         showNextLevelButton={evaluation.status === 'success'}
+      />
+
+      {/* Component Help Popup */}
+      <EducationalPopup
+        isOpen={!!activeHelpComponent}
+        onClose={() => setActiveHelpComponent(null)}
+        type="component-help"
+        componentHelp={activeHelpComponent ? COMPONENT_HELP[activeHelpComponent] : undefined}
       />
     </div>
   );

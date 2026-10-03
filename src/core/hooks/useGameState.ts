@@ -20,6 +20,7 @@ import {
   checkNewAchievements,
 } from '../gamification/progressionEngine';
 import { ACTIVE_TRACKS, getTrackLevels, getLevelById } from '../levels';
+import { generateTrackHint } from '../engines/hintEngine';
 
 export type ActiveView = 'home' | 'tracks' | 'progress' | 'achievements' | 'profile' | 'game' | 'debug';
 
@@ -138,8 +139,8 @@ export function useGameState() {
       const newLevelScore = Math.max(prevScore, breakdown.totalScore);
       const starDifference = Math.max(0, newLevelStars - prevStars);
 
-      // Regenerate up to 15 Quantum Energy on success
-      const updatedEnergy = Math.min(100, stats.quantumEnergy + 15);
+      // Regenerate 1 Quantum Energy point on success (capped at 5)
+      const updatedEnergy = Math.min(5, (stats.quantumEnergy || 0) + 1);
 
       const updatedStats: PlayerStats = {
         ...stats,
@@ -173,23 +174,96 @@ export function useGameState() {
     }
   }, [activeTrackId, activeLevelId, attempt, stats]);
 
-  // Request hint (consumes 15 Quantum Energy)
-  const useHint = useCallback((): { allowed: boolean; hintText: string } => {
-    if (!currentLevel || !currentLevel.hints || currentLevel.hints.length === 0) {
-      return { allowed: false, hintText: 'No hint available for this level.' };
+  // Request hint (consumes exactly 1 Quantum Energy point, max 5, min 0)
+  const useHint = useCallback((liveState?: any): {
+    allowed: boolean;
+    reason?: 'no-energy' | 'no-hints' | 'success';
+    hintText: string;
+    hintData?: any;
+    energyRemaining: number;
+  } => {
+    if (!currentLevel) {
+      return {
+        allowed: false,
+        reason: 'no-hints',
+        hintText: 'No hint available for this level.',
+        energyRemaining: stats.quantumEnergy,
+      };
     }
-    if (stats.quantumEnergy < 15) {
-      return { allowed: false, hintText: 'Not enough Quantum Energy. Complete levels to recharge energy!' };
+
+    // Check if energy is 0
+    if (stats.quantumEnergy <= 0) {
+      return {
+        allowed: false,
+        reason: 'no-energy',
+        hintText: 'You have used all available Quantum Energy.',
+        energyRemaining: 0,
+      };
     }
+
+    const levelKey = `${activeTrackId}_${activeLevelId}`;
+    const nextTier = ((stats.hintTiers?.[levelKey] || 0) % 4) + 1;
+    const remainingEnergy = Math.max(0, stats.quantumEnergy - 1);
+
+    // Generate intelligent state-aware hint
+    const generated = generateTrackHint({
+      trackId: activeTrackId,
+      level: currentLevel,
+      state: liveState !== undefined ? liveState : currentLevel.initialState,
+      tier: nextTier,
+      hasInteracted: attempt.hasInteracted,
+    });
 
     setStats(prev => ({
       ...prev,
-      quantumEnergy: Math.max(0, prev.quantumEnergy - 15),
+      quantumEnergy: remainingEnergy,
+      hintTiers: {
+        ...(prev.hintTiers || {}),
+        [levelKey]: nextTier,
+      },
     }));
 
-    const randomHint = currentLevel.hints[Math.floor(Math.random() * currentLevel.hints.length)];
-    return { allowed: true, hintText: randomHint };
-  }, [currentLevel, stats.quantumEnergy]);
+    return {
+      allowed: true,
+      reason: 'success',
+      hintText: generated.body,
+      hintData: {
+        ...generated,
+        energyRemaining: remainingEnergy,
+      },
+      energyRemaining: remainingEnergy,
+    };
+  }, [activeTrackId, activeLevelId, currentLevel, stats.quantumEnergy, stats.hintTiers, attempt.hasInteracted]);
+
+  // Mark track intro seen
+  const markTrackIntroSeen = useCallback((trackId: TrackId) => {
+    setStats(prev => ({
+      ...prev,
+      seenTrackIntros: {
+        ...(prev.seenTrackIntros || {}),
+        [trackId]: true,
+      },
+    }));
+  }, []);
+
+  const hasSeenTrackIntro = useCallback((trackId: TrackId): boolean => {
+    return !!stats.seenTrackIntros?.[trackId];
+  }, [stats.seenTrackIntros]);
+
+  // Mark component intro seen
+  const markComponentIntroSeen = useCallback((componentId: string) => {
+    setStats(prev => ({
+      ...prev,
+      seenComponentIntros: {
+        ...(prev.seenComponentIntros || {}),
+        [componentId]: true,
+      },
+    }));
+  }, []);
+
+  const hasSeenComponentIntro = useCallback((componentId: string): boolean => {
+    return !!stats.seenComponentIntros?.[componentId];
+  }, [stats.seenComponentIntros]);
 
   // Navigate to next level in current track
   const proceedToNextLevel = useCallback(() => {
@@ -254,6 +328,10 @@ export function useGameState() {
     proceedToNextLevel,
     isLevelUnlocked,
     handleFullReset,
+    markTrackIntroSeen,
+    hasSeenTrackIntro,
+    markComponentIntroSeen,
+    hasSeenComponentIntro,
     newlyUnlockedAchievements,
     clearToastAchievement: (id: string) => {
       setNewlyUnlockedAchievements(prev => prev.filter(a => a.id !== id));

@@ -266,9 +266,58 @@ console.log('\n[Track 5] Quantum Phase Estimation Engine:');
   assert(correctPhase.status === 'success', 'Estimate within tolerance returns status=success');
 }
 
+console.log('\n[Education & Hints] Intelligent Hint Engine & Track Intros:');
+{
+  const { generateTrackHint } = await import('../engines/hintEngine.ts');
+  const { TRACK_INTROS, COMPONENT_HELP } = await import('../educationData.ts');
+  const { TRACK_1_LEVELS } = await import('../levels/track1Levels.ts');
+
+  // Verify hints adapt and have tiers
+  const lvl1 = TRACK_1_LEVELS[0];
+  const h1 = generateTrackHint({
+    trackId: 'bloch-sphere',
+    level: lvl1,
+    state: lvl1.initialSpheres,
+    tier: 1,
+    hasInteracted: true,
+  });
+  assert(h1.title.includes('Conceptual'), 'Hint tier 1 provides conceptual guidance');
+
+  const h2 = generateTrackHint({
+    trackId: 'bloch-sphere',
+    level: lvl1,
+    state: lvl1.initialSpheres,
+    tier: 2,
+    hasInteracted: true,
+  });
+  assert(h2.title.includes('Direction'), 'Hint tier 2 provides direction of correction');
+
+  const h3 = generateTrackHint({
+    trackId: 'bloch-sphere',
+    level: lvl1,
+    state: lvl1.initialSpheres,
+    tier: 3,
+    hasInteracted: true,
+  });
+  assert(h3.title.includes('Specific'), 'Hint tier 3 provides specific guidance');
+
+  // Verify track intros exist for all 5 tracks
+  const tracks = ['bloch-sphere', 'quantum-gates', 'quantum-interference', 'error-correction', 'phase-estimation'] as const;
+  for (const t of tracks) {
+    const intro = TRACK_INTROS[t];
+    assert(!!intro && intro.walkthroughSteps.length === 4, `Track intro for ${t} has all 4 walkthrough steps`);
+  }
+
+  // Verify components exist
+  assert(!!COMPONENT_HELP['bloch-sphere'], 'Bloch sphere component explanation exists');
+  assert(!!COMPONENT_HELP['phase-dial'], 'Phase dial component explanation exists');
+  assert(!!COMPONENT_HELP['syndrome-bits'], 'Syndrome bits component explanation exists');
+  assert(!!COMPONENT_HELP['phase-flip-concept'], 'Phase-flip concept explanation exists');
+}
+
 console.log(`\n=== TEST RESULTS: ${passed} PASSED, ${failed} FAILED ===\n`);
 if (failed > 0) {
   process.exit(1);
 } else {
-  console.log('ALL MATHEMATICAL ENGINES VERIFIED 100% CORRECT!\n');
+  console.log('ALL MATHEMATICAL ENGINES & EDUCATIONAL SYSTEMS VERIFIED 100% CORRECT!\n');
 }

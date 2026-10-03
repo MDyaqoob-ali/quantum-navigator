@@ -9,13 +9,16 @@ export const INITIAL_PLAYER_STATS: PlayerStats = {
   level: 1,
   totalStars: 0,
   streakDays: 1,
-  quantumEnergy: 100, // Starts full for assistance & hints
+  quantumEnergy: 5, // Starts full with 5 hint points
   lastPlayedDate: new Date().toISOString().split('T')[0],
   completedLevels: {},
   levelScores: {},
   levelStars: {},
   levelAttempts: {},
   unlockedAchievements: [],
+  seenTrackIntros: {},
+  seenComponentIntros: {},
+  hintTiers: {},
 };
 
 export function loadPlayerStats(): PlayerStats {
@@ -23,9 +26,24 @@ export function loadPlayerStats(): PlayerStats {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...INITIAL_PLAYER_STATS };
     const parsed = JSON.parse(raw);
+    
+    // Normalize discrete quantum energy: 0 to 5
+    let energy = 5;
+    if (typeof parsed.quantumEnergy === 'number') {
+      if (parsed.quantumEnergy > 5) {
+        energy = 5; // Migrated from old 0-100 scale
+      } else {
+        energy = Math.max(0, Math.min(5, Math.round(parsed.quantumEnergy)));
+      }
+    }
+
     return {
       ...INITIAL_PLAYER_STATS,
       ...parsed,
+      quantumEnergy: energy,
+      seenTrackIntros: parsed.seenTrackIntros || {},
+      seenComponentIntros: parsed.seenComponentIntros || {},
+      hintTiers: parsed.hintTiers || {},
       // Verify streak dates
       streakDays: calculateStreak(parsed.lastPlayedDate, parsed.streakDays || 1),
       lastPlayedDate: new Date().toISOString().split('T')[0],

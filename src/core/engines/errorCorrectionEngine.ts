@@ -154,6 +154,16 @@ export function evaluateRepairLevel(input: RepairEvaluationInput): EvaluationRes
     };
   }
 
+  if (!action.applied && level.errorType !== 'none' && action.targetQubit !== null && action.gate !== null) {
+    return {
+      status: 'incomplete',
+      score: 0,
+      progress: 0.2,
+      feedback: `You selected Q${action.targetQubit + 1} and gate [${action.gate}]. Click "Apply Gate" to simulate the correction before verifying.`,
+      details: { missing: 'apply' },
+    };
+  }
+
   // 3. Simulate corruption and player's correction
   const initialCorrupted = generateCorruptedState(level);
   const syndrome = calculateSyndrome(initialCorrupted);
@@ -174,13 +184,14 @@ export function evaluateRepairLevel(input: RepairEvaluationInput): EvaluationRes
       status: 'success',
       score: 1000,
       progress: 1.0,
-      feedback: `✓ Memory restored! Syndrome ${syndromeText} correctly mapped to ${targetQubitName}. The ${action.gate} gate repaired the corruption.`,
+      feedback: `✓ QUANTUM INFORMATION RESTORED! Syndrome ${syndromeText} correctly mapped to ${targetQubitName}. Gate [${action.gate}] repaired the corruption.`,
       details: {
         syndrome: syndromeText,
         corruptedQubit: targetQubitName,
         correctedQubit: chosenQubitName,
         gateUsed: action.gate,
         repairedState: repairedQubits.map(q => q.value).join(''),
+        verified: true,
       },
     };
   }
@@ -188,9 +199,13 @@ export function evaluateRepairLevel(input: RepairEvaluationInput): EvaluationRes
   // Diagnostic feedback on wrong answer
   let feedback = '';
   if (action.targetQubit !== level.corruptedQubitIndex) {
-    feedback = `Syndrome ${syndromeText} identifies ${targetQubitName}, but your correction was applied to ${chosenQubitName}. Memory remains corrupted.`;
+    feedback = `❌ REPAIR FAILED: Your correction was applied to ${chosenQubitName}, but syndrome ${syndromeText} identifies ${targetQubitName}.`;
+  } else if (level.errorType === 'bit-flip' && action.gate !== 'X') {
+    feedback = `❌ WRONG CORRECTION: The detected error is a bit flip. A bit-flip correction requires [X].`;
+  } else if (level.errorType === 'phase-flip' && action.gate !== 'Z') {
+    feedback = `❌ WRONG CORRECTION: The detected error is a phase flip. A phase-flip correction requires [Z].`;
   } else {
-    feedback = `Target qubit ${chosenQubitName} was correctly diagnosed, but gate [${action.gate}] did not repair the ${level.errorType}. Try the appropriate conjugate gate.`;
+    feedback = `❌ REPAIR FAILED: Correction on ${chosenQubitName} with gate [${action.gate}] did not restore the logical state.`;
   }
 
   return {
@@ -204,6 +219,7 @@ export function evaluateRepairLevel(input: RepairEvaluationInput): EvaluationRes
       chosenQubit: chosenQubitName,
       gateUsed: action.gate,
       actualState: repairedQubits.map(q => q.value).join(''),
+      verified: false,
     },
   };
 }

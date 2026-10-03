@@ -8,7 +8,9 @@ import {
 import { EvaluationResult } from '../../../core/types';
 import { SignalVisualizer } from './SignalVisualizer';
 import { ResultPanel } from '../../common/ResultPanel';
-import { Radio, BarChart2 } from 'lucide-react';
+import { EducationalPopup } from '../../common/EducationalPopup';
+import { COMPONENT_HELP } from '../../../core/educationData';
+import { Radio, BarChart2, HelpCircle } from 'lucide-react';
 
 interface Track5GameProps {
   level: PhaseLevelConfig;
@@ -28,6 +30,7 @@ export const Track5Game: React.FC<Track5GameProps> = ({
   const [playerEstimate, setPlayerEstimate] = useState<number>(0.1);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [sampleCounts, setSampleCounts] = useState<Record<string, number> | null>(null);
+  const [activeHelpComponent, setActiveHelpComponent] = useState<string | null>(null);
 
   useEffect(() => {
     setPlayerEstimate(0.1);
@@ -78,6 +81,13 @@ export const Track5Game: React.FC<Track5GameProps> = ({
             <span style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Radio size={16} style={{ color: 'var(--accent-amber)' }} />
               Quantum Signal Spectrum (QPE Register Readout)
+              <button
+                onClick={() => setActiveHelpComponent('phase-estimator')}
+                title="What is Quantum Phase Estimation? (Free)"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+              >
+                <HelpCircle size={14} />
+              </button>
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span className="badge badge-amber">3-Qubit Hadamard & IQFT</span>
@@ -103,7 +113,17 @@ export const Track5Game: React.FC<Track5GameProps> = ({
 
         {/* Control Panel: Phase Estimation Scanner Dial */}
         <div className="control-panel-container" data-ui-zone="phase-scanner-panel">
-          <div className="control-section-header">Phase Scanner Calibration</div>
+          <div className="control-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Phase Scanner Calibration</span>
+            <button
+              onClick={() => setActiveHelpComponent('phase-estimator')}
+              title="Learn about Phase Estimation (Free)"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600 }}
+            >
+              <HelpCircle size={13} />
+              <span>? Help</span>
+            </button>
+          </div>
 
           {/* Scanner Dial / Range */}
           <div
@@ -214,6 +234,14 @@ export const Track5Game: React.FC<Track5GameProps> = ({
         runButtonLabel="Verify Phase Estimate"
         onNextLevel={onNextLevel}
         showNextLevelButton={evaluation.status === 'success'}
+      />
+
+      {/* Component Help Popup */}
+      <EducationalPopup
+        isOpen={!!activeHelpComponent}
+        onClose={() => setActiveHelpComponent(null)}
+        type="component-help"
+        componentHelp={activeHelpComponent ? COMPONENT_HELP[activeHelpComponent] : undefined}
       />
     </div>
   );

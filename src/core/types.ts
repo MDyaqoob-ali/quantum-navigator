@@ -44,13 +44,16 @@ export interface PlayerStats {
   level: number;
   totalStars: number;
   streakDays: number;
-  quantumEnergy: number; // 0 to 100
+  quantumEnergy: number; // Discrete points: 0 to 5 (1 point per hint, max 5)
   lastPlayedDate: string;
   completedLevels: Record<string, boolean>; // key: `${trackId}_${levelId}`
   levelScores: Record<string, number>;
   levelStars: Record<string, number>;
   levelAttempts: Record<string, number>;
   unlockedAchievements: string[];
+  seenTrackIntros?: Record<string, boolean>;
+  seenComponentIntros?: Record<string, boolean>;
+  hintTiers?: Record<string, number>;
 }
 
 export interface Achievement {

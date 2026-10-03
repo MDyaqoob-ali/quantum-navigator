@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useGameState } from './core/hooks/useGameState';
 import { TopBar } from './components/common/TopBar';
 import { TrackHeader } from './components/common/TrackHeader';
-import { MissionCard } from './components/common/MissionCard';
+import { MissionCard, MissionTelemetry } from './components/common/MissionCard';
 import { SuccessModal } from './components/common/SuccessModal';
-import { HintModal } from './components/common/HintModal';
-import { TutorialModal } from './components/common/TutorialModal';
+import { EducationalPopup, EducationalPopupType } from './components/common/EducationalPopup';
+import { TRACK_INTROS, COMPONENT_HELP } from './core/educationData';
 
 import { HomeView } from './components/views/HomeView';
 import { TracksView } from './components/views/TracksView';
@@ -43,21 +43,208 @@ export function App() {
     proceedToNextLevel,
     isLevelUnlocked,
     handleFullReset,
+    markTrackIntroSeen,
+    hasSeenTrackIntro,
+    markComponentIntroSeen,
+    hasSeenComponentIntro,
     newlyUnlockedAchievements,
     clearToastAchievement,
   } = useGameState();
 
-  const [hintModalOpen, setHintModalOpen] = useState(false);
-  const [currentHintText, setCurrentHintText] = useState('');
-  const [tutorialModalOpen, setTutorialModalOpen] = useState(false);
+  // Unified Educational Popup State
+  const [eduPopup, setEduPopup] = useState<{
+    isOpen: boolean;
+    type: EducationalPopupType;
+    trackIntro?: any;
+    componentHelp?: any;
+    hintData?: any;
+  }>({
+    isOpen: false,
+    type: 'track-intro',
+  });
+
   const [successModalDismissed, setSuccessModalDismissed] = useState(false);
 
-  // Trigger hint
-  const handleOpenHint = () => {
-    const { allowed, hintText } = useHint();
-    setCurrentHintText(hintText);
-    setHintModalOpen(true);
+  // Trigger track intro automatically on first visit to any track
+  useEffect(() => {
+    if (currentView === 'game' && activeTrackId) {
+      if (!hasSeenTrackIntro(activeTrackId)) {
+        setEduPopup({
+          isOpen: true,
+          type: 'track-intro',
+          trackIntro: TRACK_INTROS[activeTrackId],
+        });
+      }
+    }
+  }, [currentView, activeTrackId, hasSeenTrackIntro]);
+
+  // Open Track Introduction explicitly (? How to Play button)
+  const handleOpenHowToPlay = () => {
+    setEduPopup({
+      isOpen: true,
+      type: 'track-intro',
+      trackIntro: TRACK_INTROS[activeTrackId],
+    });
   };
+
+  // Open Interactive Walkthrough
+  const handleStartWalkthrough = () => {
+    setEduPopup(prev => ({
+      ...prev,
+      type: 'walkthrough',
+      trackIntro: TRACK_INTROS[activeTrackId],
+    }));
+  };
+
+  // Close Educational Popup and record persistence
+  const handleCloseEduPopup = () => {
+    if (eduPopup.type === 'track-intro' || eduPopup.type === 'walkthrough') {
+      markTrackIntroSeen(activeTrackId);
+    }
+    setEduPopup(prev => ({ ...prev, isOpen: false }));
+  };
+
+  // Trigger state-aware Hint (consumes 1 Energy Point)
+  const handleOpenHint = () => {
+    const res = useHint();
+    if (res.reason === 'no-energy') {
+      setEduPopup({
+        isOpen: true,
+        type: 'no-energy',
+      });
+    } else if (res.allowed && res.hintData) {
+      setEduPopup({
+        isOpen: true,
+        type: 'hint',
+        hintData: res.hintData,
+      });
+    }
+  };
+
+  // Open concept help from Mission Card
+  const handleOpenConceptHelp = () => {
+    if (!currentLevel) return;
+    setEduPopup({
+      isOpen: true,
+      type: 'component-help',
+      componentHelp: {
+        name: currentLevel.educationalConcept,
+        shortDesc: `${currentLevel.title} — ${currentLevel.subtitle}`,
+        detailedDesc: currentLevel.description,
+      },
+    });
+  };
+
+  // Standardized Mission Telemetry across all 5 tracks
+  const missionTelemetry: MissionTelemetry | undefined = useMemo(() => {
+    if (!currentLevel) return undefined;
+
+    if (activeTrackId === 'bloch-sphere') {
+      const targetDegTheta = ((currentLevel.targetTheta * 180) / Math.PI).toFixed(0);
+      const targetDegPhi = ((currentLevel.targetPhi * 180) / Math.PI).toFixed(0);
+      const errDeg = evaluation.details?.errorDegrees !== undefined
+        ? `${evaluation.details.errorDegrees}°`
+        : `Tol ±${currentLevel.toleranceDegrees || 5}°`;
+      const isMatched = evaluation.status === 'success';
+
+      return {
+        targetLabel: 'TARGET DIRECTION',
+        targetValue: `θ=${targetDegTheta}°, φ=${targetDegPhi}°`,
+        currentLabel: 'RESULTANT DIRECTION',
+        currentValue: evaluation.details?.resultant
+          ? `θ=${evaluation.details.resultant.thetaDeg}°, φ=${evaluation.details.resultant.phiDeg}°`
+          : 'Adjusting Spheres',
+        errorLabel: 'ANGULAR ERROR',
+        errorValue: errDeg,
+        statusLabel: 'STATUS',
+        statusValue: isMatched ? '✓ TARGET MATCHED' : (evaluation.status === 'unstarted' ? 'START DRAGGING' : 'ADJUSTING'),
+        isMatched,
+      };
+    }
+
+    if (activeTrackId === 'quantum-gates') {
+      const isMatched = evaluation.status === 'success';
+      const fid = evaluation.details?.fidelity !== undefined
+        ? (evaluation.details.fidelity * 100).toFixed(0)
+        : undefined;
+
+      return {
+        targetLabel: 'TARGET QUANTUM STATE',
+        targetValue: `|${currentLevel.gateLevel?.targetName || currentLevel.subtitle || '1'}⟩`,
+        currentLabel: 'CURRENT STATE FIDELITY',
+        currentValue: fid !== undefined ? `${fid}% Fidelity` : 'Circuit in Progress',
+        errorLabel: 'FIDELITY DISTANCE',
+        errorValue: fid !== undefined ? `${100 - Number(fid)}% away` : 'Run Circuit',
+        statusLabel: 'STATUS',
+        statusValue: isMatched ? '✓ TARGET MATCHED' : 'KEEP BUILDING',
+        isMatched,
+      };
+    }
+
+    if (activeTrackId === 'quantum-interference') {
+      const isMatched = evaluation.status === 'success';
+      const targetA = (currentLevel.interferenceLevel?.targetDetectorA * 100).toFixed(0);
+      const targetB = (currentLevel.interferenceLevel?.targetDetectorB * 100).toFixed(0);
+      const currentA = evaluation.details?.probA !== undefined ? (evaluation.details.probA * 100).toFixed(1) : undefined;
+      const currentB = evaluation.details?.probB !== undefined ? (evaluation.details.probB * 100).toFixed(1) : undefined;
+      const err = evaluation.details?.error !== undefined
+        ? `${(evaluation.details.error * 100).toFixed(1)} pp`
+        : `Tol ±${(currentLevel.interferenceLevel?.tolerance * 100).toFixed(0)}%`;
+
+      return {
+        targetLabel: 'TARGET DETECTOR PROBABILITY',
+        targetValue: `A: ${targetA}% / B: ${targetB}%`,
+        currentLabel: 'CURRENT DETECTOR PROBABILITY',
+        currentValue: currentA !== undefined ? `A: ${currentA}% / B: ${currentB}%` : 'Turn Phase Dial',
+        errorLabel: 'PROBABILITY ERROR',
+        errorValue: err,
+        statusLabel: 'STATUS',
+        statusValue: isMatched ? '✓ TARGET MATCHED' : 'KEEP ADJUSTING',
+        isMatched,
+      };
+    }
+
+    if (activeTrackId === 'error-correction') {
+      const isMatched = evaluation.status === 'success';
+      const targetVal = currentLevel.errorLevel?.logicalValue === 0 ? '000' : '111';
+
+      return {
+        targetLabel: 'TARGET RESTORED STATE',
+        targetValue: `|${targetVal}⟩ (Logical |${currentLevel.errorLevel?.logicalValue === 0 ? '0_L' : '1_L'}⟩)`,
+        currentLabel: 'CURRENT REPAIRED STATE',
+        currentValue: evaluation.details?.repairedState
+          ? `|${evaluation.details.repairedState}⟩`
+          : (evaluation.details?.actualState ? `|${evaluation.details.actualState}⟩` : 'Corrupted State'),
+        errorLabel: 'SYNDROME S1S2',
+        errorValue: evaluation.details?.syndrome ? `S1S2 = ${evaluation.details.syndrome}` : 'Extracting Syndrome',
+        statusLabel: 'STATUS',
+        statusValue: isMatched ? '✓ STATE RESTORED' : (evaluation.status === 'incorrect' ? '❌ REPAIR FAILED' : 'DIAGNOSING'),
+        isMatched,
+      };
+    }
+
+    if (activeTrackId === 'phase-estimation') {
+      const isMatched = evaluation.status === 'success';
+      const truePh = (currentLevel.phaseLevel?.truePhase ?? currentLevel.truePhase ?? 0.25).toFixed(3);
+      const tol = currentLevel.phaseLevel?.tolerance ?? currentLevel.tolerance ?? 0.05;
+      const currentEst = evaluation.details?.playerEstimate !== undefined ? evaluation.details.playerEstimate.toFixed(3) : undefined;
+      const err = evaluation.details?.error !== undefined ? `Δθ = ${evaluation.details.error.toFixed(3)}` : `Tol ±${tol}`;
+
+      return {
+        targetLabel: 'TARGET EIGENPHASE θ',
+        targetValue: `θ = ${truePh} (±${tol})`,
+        currentLabel: 'ESTIMATED PHASE',
+        currentValue: currentEst !== undefined ? `θ = ${currentEst}` : 'Adjust Calibration Dial',
+        errorLabel: 'PHASE ERROR',
+        errorValue: err,
+        statusLabel: 'STATUS',
+        statusValue: isMatched ? '✓ TARGET MATCHED' : 'ESTIMATING',
+        isMatched,
+      };
+    }
+
+    return undefined;
+  }, [activeTrackId, currentLevel, evaluation]);
 
   // When level completes
   const isSuccessModalOpen = evaluation.status === 'success' && !successModalDismissed;
@@ -190,11 +377,18 @@ export function App() {
             stats={stats}
             onReset={resetCurrentLevel}
             onOpenHint={handleOpenHint}
-            onToggleTutorial={() => setTutorialModalOpen(true)}
+            onToggleTutorial={handleOpenHowToPlay}
           />
 
-          {/* Mission & Quantum Concept Card */}
-          <MissionCard level={currentLevel} />
+          {/* Mission & Standardized Target Hierarchy Card */}
+          <MissionCard
+            level={currentLevel}
+            telemetry={missionTelemetry}
+            onOpenHint={handleOpenHint}
+            onReset={resetCurrentLevel}
+            energy={stats.quantumEnergy}
+            onOpenConceptHelp={handleOpenConceptHelp}
+          />
 
           {/* Dedicated Track Gameplay */}
           {activeTrackId === 'bloch-sphere' && (
@@ -263,19 +457,16 @@ export function App() {
         />
       )}
 
-      {/* Hint Modal */}
-      <HintModal
-        isOpen={hintModalOpen}
-        onClose={() => setHintModalOpen(false)}
-        hintText={currentHintText}
-        currentEnergy={stats.quantumEnergy}
-      />
-
-      {/* Tutorial Modal */}
-      <TutorialModal
-        isOpen={tutorialModalOpen}
-        onClose={() => setTutorialModalOpen(false)}
-        trackId={activeTrackId}
+      {/* Unified Educational & Hint Popup */}
+      <EducationalPopup
+        isOpen={eduPopup.isOpen}
+        onClose={handleCloseEduPopup}
+        type={eduPopup.type}
+        trackIntro={eduPopup.trackIntro}
+        componentHelp={eduPopup.componentHelp}
+        hintData={eduPopup.hintData}
+        onStartWalkthrough={handleStartWalkthrough}
+        onFinish={handleCloseEduPopup}
       />
     </div>
   );

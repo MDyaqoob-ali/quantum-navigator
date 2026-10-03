@@ -65,22 +65,31 @@ export const TrackHeader: React.FC<TrackHeaderProps> = ({
       {/* Right: Action Buttons */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <button
-          className="btn btn-sm"
+          className="btn btn-sm btn-secondary"
           onClick={onToggleTutorial}
-          title="Interactive Concept Guide"
+          title="Track Introduction, Rules & Interactive Walkthrough"
+          style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '5px' }}
         >
           <BookOpen size={14} />
-          <span>Guide</span>
+          <span>? How To Play</span>
         </button>
 
         <button
           className="btn btn-sm"
           onClick={onOpenHint}
-          title="Use 15 Quantum Energy for a hint"
-          style={{ color: 'var(--accent-amber)', borderColor: 'rgba(180, 83, 9, 0.3)' }}
+          title="Use 1 Quantum Energy point for a state-aware hint"
+          style={{
+            color: stats.quantumEnergy > 0 ? '#B45309' : 'var(--text-muted)',
+            borderColor: stats.quantumEnergy > 0 ? 'rgba(180, 83, 9, 0.3)' : 'var(--border-subtle)',
+            backgroundColor: stats.quantumEnergy > 0 ? '#FEF3C7' : 'var(--bg-secondary)',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+          }}
         >
           <Lightbulb size={14} />
-          <span>Hint</span>
+          <span>HINT ⚡</span>
         </button>
 
         <button

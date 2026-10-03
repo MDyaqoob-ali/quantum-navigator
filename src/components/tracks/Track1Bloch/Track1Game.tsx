@@ -8,6 +8,9 @@ import {
 import { EvaluationResult } from '../../../core/types';
 import { BlochCanvas } from './BlochCanvas';
 import { ResultPanel } from '../../common/ResultPanel';
+import { EducationalPopup } from '../../common/EducationalPopup';
+import { COMPONENT_HELP } from '../../../core/educationData';
+import { HelpCircle } from 'lucide-react';
 import {
   sphericalToCartesian,
   cartesianToSpherical,
@@ -35,6 +38,7 @@ export const Track1Game: React.FC<Track1GameProps> = ({
     level.initialSpheres.map(s => ({ ...s }))
   );
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [activeHelpComponent, setActiveHelpComponent] = useState<string | null>(null);
 
   // Synchronize when level changes
   useEffect(() => {
@@ -115,8 +119,15 @@ export const Track1Game: React.FC<Track1GameProps> = ({
         {/* Game Area: Player Bloch Spheres */}
         <div className="game-area-container" data-ui-zone="bloch-spheres-area">
           <div className="game-area-header">
-            <span style={{ fontSize: '14px', fontWeight: 600 }}>
+            <span style={{ fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
               Active Qubit State Vectors ({currentSpheres.length} Sphere{currentSpheres.length > 1 ? 's' : ''})
+              <button
+                onClick={() => setActiveHelpComponent('bloch-sphere')}
+                title="What is a Bloch Sphere? (Free)"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+              >
+                <HelpCircle size={14} />
+              </button>
             </span>
             <span className="badge badge-red">
               Drag endpoints (↻) on movable spheres
@@ -144,8 +155,16 @@ export const Track1Game: React.FC<Track1GameProps> = ({
 
         {/* Control & Target Comparison Panel */}
         <div className="control-panel-container" data-ui-zone="bloch-target-panel">
-          <div className="control-section-header">
-            Target Alignment & Resultant Synthesis
+          <div className="control-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Target Alignment & Resultant Synthesis</span>
+            <button
+              onClick={() => setActiveHelpComponent('resultant-vector')}
+              title="What is the Resultant Vector? (Free)"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 600 }}
+            >
+              <HelpCircle size={13} />
+              <span>? Help</span>
+            </button>
           </div>
 
           {/* Target & Resultant Previews Side-by-Side */}
@@ -223,6 +242,14 @@ export const Track1Game: React.FC<Track1GameProps> = ({
         runButtonLabel="Verify Alignment"
         onNextLevel={onNextLevel}
         showNextLevelButton={evaluation.status === 'success'}
+      />
+
+      {/* Component Help Popup */}
+      <EducationalPopup
+        isOpen={!!activeHelpComponent}
+        onClose={() => setActiveHelpComponent(null)}
+        type="component-help"
+        componentHelp={activeHelpComponent ? COMPONENT_HELP[activeHelpComponent] : undefined}
       />
     </div>
   );
