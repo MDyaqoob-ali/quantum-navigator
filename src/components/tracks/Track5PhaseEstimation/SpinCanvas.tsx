@@ -726,13 +726,13 @@ export const SpinCanvas: React.FC<SpinCanvasProps> = ({
   ]);
 
   return (
-    <div className="relative w-full flex flex-col items-center bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-      <div className="w-full flex items-center justify-between pb-2 border-b border-slate-100 text-xs text-slate-500 font-medium">
-        <span className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+    <div className="t5-apparatus-container" data-ui-zone="spin-canvas-container">
+      <div className="t5-apparatus-header">
+        <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, color: 'var(--text-primary)' }}>
+          <span className="t5-live-dot" />
           Interactive Quantum Spin Apparatus
         </span>
-        <span className="text-[11px] text-slate-400">
+        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
           Click & Drag Needle to Rotate Axis
         </span>
       </div>
@@ -745,15 +745,16 @@ export const SpinCanvas: React.FC<SpinCanvasProps> = ({
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        className={`w-full max-w-[720px] h-auto select-none touch-none ${
-          activeDrag
-            ? 'cursor-grabbing'
+        className="t5-canvas-el"
+        style={{
+          cursor: activeDrag
+            ? 'grabbing'
             : hoveredObject === 'a1' || hoveredObject === 'a2'
-            ? 'cursor-grab'
+            ? 'grab'
             : hoveredObject?.startsWith('branch')
-            ? 'cursor-pointer'
-            : 'cursor-default'
-        }`}
+            ? 'pointer'
+            : 'default',
+        }}
       />
     </div>
   );

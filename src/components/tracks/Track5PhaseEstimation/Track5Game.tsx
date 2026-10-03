@@ -322,45 +322,37 @@ export const Track5Game: React.FC<Track5GameProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col gap-5 select-none" data-ui-zone="track5-game-container">
+    <div className="t5-container" data-ui-zone="track5-game-container">
       {/* Main Two-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT COLUMN (7 cols): Target Card + Stern-Gerlach Interactive Canvas */}
-        <div className="lg:col-span-7 flex flex-col gap-5">
+      <div className="t5-layout-grid">
+        {/* LEFT COLUMN: Target Card + Stern-Gerlach Interactive Canvas */}
+        <div className="t5-col">
           {/* Target & Live Output Panel */}
-          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col gap-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100 flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  TARGET vs LIVE APPARATUS
-                </span>
+          <div className="t5-card">
+            <div className="t5-card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span className="t5-card-title">🎯 Target vs Live Apparatus</span>
                 {level.allowedExperiments && (
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                  <span className="t5-chip-runs">
                     Runs: {experimentsUsed} / {level.allowedExperiments}
                   </span>
                 )}
                 {timeRemaining !== null && (
-                  <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold ${
-                      timeRemaining <= 15
-                        ? 'bg-rose-50 text-rose-700 border border-rose-200 animate-pulse'
-                        : 'bg-slate-100 text-slate-700'
-                    }`}
-                  >
-                    <Clock className="w-3 h-3" />
+                  <span className={`t5-chip-timer ${timeRemaining <= 15 ? 't5-chip-timer-alert' : ''}`}>
+                    <Clock size={12} />
                     {timeRemaining}s
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-2">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span
-                  className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                  className={
                     evaluation.status === 'success'
-                      ? 'bg-emerald-100 text-emerald-800'
+                      ? 't5-badge-success'
                       : isTargetSatisfied
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-amber-100 text-amber-800'
-                  }`}
+                      ? 't5-badge-info'
+                      : 't5-badge-warning'
+                  }
                 >
                   {evaluation.status === 'success'
                     ? '✓ TARGET REACHED'
@@ -370,88 +362,84 @@ export const Track5Game: React.FC<Track5GameProps> = ({
                 </span>
                 <button
                   onClick={() => setShowHowToPlayModal(true)}
-                  className="p-1 text-slate-400 hover:text-blue-600 rounded transition-colors"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#64748B',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '2px',
+                  }}
                   title="How to Play: Spin Splitter"
                 >
-                  <HelpCircle className="w-4 h-4" />
+                  <HelpCircle size={16} />
                 </button>
               </div>
             </div>
 
             {/* Target vs Current Comparison Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50/70 p-3.5 rounded-xl border border-slate-100">
+            <div className="t5-comparison-grid">
               {/* TARGET BARS */}
-              <div className="flex flex-col gap-2">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  Target Distribution
-                </span>
-                <div className="flex flex-col gap-1.5 text-xs font-medium">
-                  <div className="flex justify-between items-center text-emerald-800 font-semibold">
-                    <span>Detector +</span>
-                    <span>
-                      {(level.targetProbPlus * 100).toFixed(0)}% ±{' '}
-                      {(level.targetTolerance * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-200/80 rounded-full h-2.5 overflow-hidden">
-                    <div
-                      className="bg-emerald-500 h-full rounded-full transition-all duration-300"
-                      style={{ width: `${level.targetProbPlus * 100}%` }}
-                    />
-                  </div>
+              <div className="t5-meter-group">
+                <span className="t5-meter-header">Target Distribution</span>
+                <div className="t5-meter-row t5-meter-row-plus">
+                  <span>Detector +</span>
+                  <span>
+                    {(level.targetProbPlus * 100).toFixed(0)}% ±{' '}
+                    {(level.targetTolerance * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <div className="t5-progress-track">
+                  <div
+                    className="t5-progress-fill-plus"
+                    style={{ width: `${level.targetProbPlus * 100}%` }}
+                  />
+                </div>
 
-                  <div className="flex justify-between items-center text-rose-800 font-semibold mt-1">
-                    <span>Detector −</span>
-                    <span>
-                      {((1.0 - level.targetProbPlus) * 100).toFixed(0)}% ±{' '}
-                      {(level.targetTolerance * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-200/80 rounded-full h-2.5 overflow-hidden">
-                    <div
-                      className="bg-rose-500 h-full rounded-full transition-all duration-300"
-                      style={{ width: `${(1.0 - level.targetProbPlus) * 100}%` }}
-                    />
-                  </div>
+                <div className="t5-meter-row t5-meter-row-minus" style={{ marginTop: '4px' }}>
+                  <span>Detector −</span>
+                  <span>
+                    {((1.0 - level.targetProbPlus) * 100).toFixed(0)}% ±{' '}
+                    {(level.targetTolerance * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <div className="t5-progress-track">
+                  <div
+                    className="t5-progress-fill-minus"
+                    style={{ width: `${(1.0 - level.targetProbPlus) * 100}%` }}
+                  />
                 </div>
               </div>
 
               {/* CURRENT LIVE READOUT */}
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    Current Apparatus
-                  </span>
-                  <span
-                    className={`text-xs font-bold ${
-                      isTargetSatisfied ? 'text-emerald-600' : 'text-slate-600'
-                    }`}
-                  >
+              <div className="t5-meter-group">
+                <div className="t5-meter-header">
+                  <span>Current Apparatus</span>
+                  <span style={{ color: isTargetSatisfied ? '#059669' : '#64748B' }}>
                     Error: {(currentError * 100).toFixed(1)}%
                   </span>
                 </div>
-                <div className="flex flex-col gap-1.5 text-xs font-medium">
-                  <div className="flex justify-between items-center text-emerald-800 font-semibold">
-                    <span>Detector +</span>
-                    <span>{(activeProbPlus * 100).toFixed(1)}%</span>
-                  </div>
-                  <div className="w-full bg-slate-200/80 rounded-full h-2.5 overflow-hidden">
-                    <div
-                      className="bg-emerald-600 h-full rounded-full transition-all duration-200"
-                      style={{ width: `${activeProbPlus * 100}%` }}
-                    />
-                  </div>
+                <div className="t5-meter-row t5-meter-row-plus">
+                  <span>Detector +</span>
+                  <span>{(activeProbPlus * 100).toFixed(1)}%</span>
+                </div>
+                <div className="t5-progress-track">
+                  <div
+                    className="t5-progress-fill-plus"
+                    style={{ width: `${activeProbPlus * 100}%` }}
+                  />
+                </div>
 
-                  <div className="flex justify-between items-center text-rose-800 font-semibold mt-1">
-                    <span>Detector −</span>
-                    <span>{(activeProbMinus * 100).toFixed(1)}%</span>
-                  </div>
-                  <div className="w-full bg-slate-200/80 rounded-full h-2.5 overflow-hidden">
-                    <div
-                      className="bg-rose-600 h-full rounded-full transition-all duration-200"
-                      style={{ width: `${activeProbMinus * 100}%` }}
-                    />
-                  </div>
+                <div className="t5-meter-row t5-meter-row-minus" style={{ marginTop: '4px' }}>
+                  <span>Detector −</span>
+                  <span>{(activeProbMinus * 100).toFixed(1)}%</span>
+                </div>
+                <div className="t5-progress-track">
+                  <div
+                    className="t5-progress-fill-minus"
+                    style={{ width: `${activeProbMinus * 100}%` }}
+                  />
                 </div>
               </div>
             </div>
@@ -474,130 +462,134 @@ export const Track5Game: React.FC<Track5GameProps> = ({
           />
         </div>
 
-        {/* RIGHT COLUMN (5 cols): Apparatus Controls + Experiment Stats & Feedback */}
-        <div className="lg:col-span-5 flex flex-col gap-5">
+        {/* RIGHT COLUMN: Apparatus Controls + Experiment Stats & Feedback */}
+        <div className="t5-col">
           {/* Controls Card */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col gap-5">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                APPARATUS CALIBRATION
+          <div className="t5-card">
+            <div className="t5-card-header">
+              <span className="t5-card-title">
+                <Compass size={14} /> Apparatus Calibration
               </span>
               <button
                 onClick={() => handleHelpClick('spin-analyzer')}
-                className="text-slate-400 hover:text-blue-600 transition-colors"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#94A3B8',
+                  display: 'flex',
+                }}
                 title="Help: Spin Analyzer"
               >
-                <HelpCircle className="w-4 h-4" />
+                <HelpCircle size={15} />
               </button>
             </div>
 
             {/* Analyzer 1 Angle Controls */}
-            <div className="flex flex-col gap-2.5 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Compass className="w-4 h-4 text-blue-600" />
+            <div className="t5-control-section">
+              <div className="t5-control-row">
+                <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Compass size={14} style={{ color: '#2563EB' }} />
                   {level.analyzerCount === 1 ? 'Analyzer Orientation' : 'Analyzer 1 (Preparation)'}
                 </span>
-                <span className="px-2.5 py-0.5 bg-blue-100/70 text-blue-800 rounded font-mono font-bold text-xs">
+                <span className="t5-angle-chip">
                   {getCardinalLabel(analyzer1Angle)}
                 </span>
               </div>
 
               {level.analyzer1Adjustable ? (
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between gap-1.5">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className="t5-step-group">
                     <button
                       onClick={() => stepAngle('a1', -15)}
-                      className="flex-1 py-1.5 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors"
+                      className="t5-btn-step"
                     >
                       −15°
                     </button>
                     <button
                       onClick={() => stepAngle('a1', -5)}
-                      className="flex-1 py-1.5 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors"
+                      className="t5-btn-step"
                     >
                       −5°
                     </button>
                     <button
                       onClick={() => stepAngle('a1', 5)}
-                      className="flex-1 py-1.5 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors"
+                      className="t5-btn-step"
                     >
                       +5°
                     </button>
                     <button
                       onClick={() => stepAngle('a1', 15)}
-                      className="flex-1 py-1.5 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors"
+                      className="t5-btn-step"
                     >
                       +15°
                     </button>
                   </div>
                   {/* Preset Quick Alignments */}
-                  <div className="flex items-center justify-between gap-1 text-[11px]">
+                  <div className="t5-presets-group">
                     <button
                       onClick={() => handleRotateA1(0)}
-                      className="flex-1 py-1 bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-700 rounded border border-slate-200 font-mono"
+                      className="t5-btn-preset"
                     >
                       +Z (0°)
                     </button>
                     <button
                       onClick={() => handleRotateA1(90)}
-                      className="flex-1 py-1 bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-700 rounded border border-slate-200 font-mono"
+                      className="t5-btn-preset"
                     >
                       +X (90°)
                     </button>
                     <button
                       onClick={() => handleRotateA1(180)}
-                      className="flex-1 py-1 bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-700 rounded border border-slate-200 font-mono"
+                      className="t5-btn-preset"
                     >
                       -Z (180°)
                     </button>
                     <button
                       onClick={() => handleRotateA1(270)}
-                      className="flex-1 py-1 bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-700 rounded border border-slate-200 font-mono"
+                      className="t5-btn-preset"
                     >
                       -X (270°)
                     </button>
                   </div>
                 </div>
               ) : (
-                <span className="text-xs text-slate-400 italic">Fixed orientation for this mission.</span>
+                <span style={{ fontSize: '12px', color: '#94A3B8', fontStyle: 'italic' }}>
+                  Fixed orientation for this mission.
+                </span>
               )}
             </div>
 
             {/* Sequential Measurements: Branch Selection & Analyzer 2 */}
             {level.analyzerCount === 2 && (
-              <div className="flex flex-col gap-3 bg-indigo-50/50 p-3.5 rounded-xl border border-indigo-100/70">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-indigo-600" />
+              <div className="t5-control-section-alt">
+                <div className="t5-control-row">
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#312E81', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Layers size={14} style={{ color: '#4F46E5' }} />
                     Branch Routing
                   </span>
                   <button
                     onClick={() => handleHelpClick('branch')}
-                    className="text-slate-400 hover:text-indigo-600"
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#818CF8' }}
                     title="Help: Selective Branch"
                   >
-                    <HelpCircle className="w-3.5 h-3.5" />
+                    <HelpCircle size={14} />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="t5-branch-group">
                   <button
                     onClick={() => handleSelectBranch('+')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all border ${
-                      selectedBranch === '+'
-                        ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
-                        : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200'
+                    className={`t5-branch-btn ${
+                      selectedBranch === '+' ? 't5-branch-btn-active-plus' : ''
                     }`}
                   >
                     + Branch (r' = +n₁)
                   </button>
                   <button
                     onClick={() => handleSelectBranch('-')}
-                    className={`py-2 px-2.5 rounded-lg text-xs font-bold transition-all border ${
-                      selectedBranch === '-'
-                        ? 'bg-rose-600 text-white border-rose-700 shadow-sm'
-                        : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200'
+                    className={`t5-branch-btn ${
+                      selectedBranch === '-' ? 't5-branch-btn-active-minus' : ''
                     }`}
                   >
                     − Branch (r' = −n₁)
@@ -605,38 +597,38 @@ export const Track5Game: React.FC<Track5GameProps> = ({
                 </div>
 
                 {/* Analyzer 2 Orientation */}
-                <div className="flex items-center justify-between pt-2 border-t border-indigo-100">
-                  <span className="text-xs font-semibold text-slate-700">
+                <div className="t5-control-row" style={{ paddingTop: '8px', borderTop: '1px solid #C7D2FE' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>
                     Analyzer 2 (Measurement)
                   </span>
-                  <span className="px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded font-mono font-bold text-xs">
+                  <span className="t5-angle-chip-indigo">
                     {getCardinalLabel(analyzer2Angle)}
                   </span>
                 </div>
 
                 {level.analyzer2Adjustable && (
-                  <div className="flex items-center justify-between gap-1.5">
+                  <div className="t5-step-group">
                     <button
                       onClick={() => stepAngle('a2', -15)}
-                      className="flex-1 py-1.5 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors"
+                      className="t5-btn-step"
                     >
                       −15°
                     </button>
                     <button
                       onClick={() => stepAngle('a2', -5)}
-                      className="flex-1 py-1.5 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors"
+                      className="t5-btn-step"
                     >
                       −5°
                     </button>
                     <button
                       onClick={() => stepAngle('a2', 5)}
-                      className="flex-1 py-1.5 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors"
+                      className="t5-btn-step"
                     >
                       +5°
                     </button>
                     <button
                       onClick={() => stepAngle('a2', 15)}
-                      className="flex-1 py-1.5 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 rounded-lg border border-slate-200 transition-colors"
+                      className="t5-btn-step"
                     >
                       +15°
                     </button>
@@ -646,11 +638,11 @@ export const Track5Game: React.FC<Track5GameProps> = ({
             )}
 
             {/* Particle Experiment Shots Selector */}
-            <div className="flex items-center justify-between gap-2 pt-1">
-              <span className="text-xs font-semibold text-slate-600">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>
                 Particle Beam Count:
               </span>
-              <div className="flex items-center gap-1">
+              <div className="t5-shots-group">
                 {[10, 50, 100].map(shots => (
                   <button
                     key={shots}
@@ -658,10 +650,8 @@ export const Track5Game: React.FC<Track5GameProps> = ({
                       soundEngine.playClick();
                       setExperimentShots(shots);
                     }}
-                    className={`px-2.5 py-1 text-xs rounded-lg font-medium transition-all ${
-                      experimentShots === shots
-                        ? 'bg-blue-600 text-white font-semibold'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    className={`t5-shots-btn ${
+                      experimentShots === shots ? 't5-shots-btn-active' : ''
                     }`}
                   >
                     {shots}
@@ -674,15 +664,11 @@ export const Track5Game: React.FC<Track5GameProps> = ({
             <button
               onClick={handleRunExperiment}
               disabled={isSimulating}
-              className={`w-full py-3 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all ${
-                isSimulating
-                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                  : isTargetSatisfied
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-500/20'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              className={`t5-run-btn ${
+                isTargetSatisfied ? 't5-run-btn-ready' : 't5-run-btn-primary'
               }`}
             >
-              <Play className={`w-4 h-4 ${isSimulating ? 'animate-spin' : ''}`} />
+              <Play size={16} />
               <span>
                 {isSimulating
                   ? 'Measuring Particle Beam...'
@@ -692,74 +678,80 @@ export const Track5Game: React.FC<Track5GameProps> = ({
           </div>
 
           {/* Results: Theory vs Observed Readout Card */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col gap-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                EXPERIMENTAL MEASUREMENT RESULTS
+          <div className="t5-card">
+            <div className="t5-card-header">
+              <span className="t5-card-title">
+                <Activity size={14} /> Experimental Results
               </span>
               <button
                 onClick={() => handleHelpClick('detector')}
-                className="text-slate-400 hover:text-blue-600"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#94A3B8',
+                  display: 'flex',
+                }}
                 title="Help: Detectors"
               >
-                <HelpCircle className="w-4 h-4" />
+                <HelpCircle size={15} />
               </button>
             </div>
 
             {/* Theory vs Observed Comparison */}
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100">
-                <span className="font-bold text-blue-900 block mb-1">
+            <div className="t5-results-grid">
+              <div className="t5-readout-card t5-readout-card-theory">
+                <span className="t5-readout-title" style={{ color: '#1E40AF' }}>
                   THEORETICAL PROBABILITY
                 </span>
-                <div className="text-slate-700 flex flex-col gap-0.5">
-                  <div className="flex justify-between">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', color: '#334155' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>+ Outcome:</span>
-                    <span className="font-mono font-bold text-emerald-700">
+                    <strong style={{ color: '#047857', fontFamily: 'monospace' }}>
                       {(activeProbPlus * 100).toFixed(1)}%
-                    </span>
+                    </strong>
                   </div>
-                  <div className="flex justify-between">
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span>− Outcome:</span>
-                    <span className="font-mono font-bold text-rose-700">
+                    <strong style={{ color: '#BE123C', fontFamily: 'monospace' }}>
                       {(activeProbMinus * 100).toFixed(1)}%
-                    </span>
+                    </strong>
                   </div>
                 </div>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="font-bold text-slate-900 block mb-1">
-                  OBSERVED RUN ({experimentSample ? experimentSample.shots : 0} particles)
+              <div className="t5-readout-card t5-readout-card-observed">
+                <span className="t5-readout-title" style={{ color: '#0F172A' }}>
+                  OBSERVED RUN ({experimentSample ? experimentSample.shots : 0})
                 </span>
                 {experimentSample ? (
-                  <div className="text-slate-700 flex flex-col gap-0.5">
-                    <div className="flex justify-between">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', color: '#334155' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>+ Count:</span>
-                      <span className="font-mono font-bold text-emerald-700">
+                      <strong style={{ color: '#047857', fontFamily: 'monospace' }}>
                         {experimentSample.countPlus} (
                         {(experimentSample.observedFreqPlus * 100).toFixed(0)}%)
-                      </span>
+                      </strong>
                     </div>
-                    <div className="flex justify-between">
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span>− Count:</span>
-                      <span className="font-mono font-bold text-rose-700">
+                      <strong style={{ color: '#BE123C', fontFamily: 'monospace' }}>
                         {experimentSample.countMinus} (
                         {(experimentSample.observedFreqMinus * 100).toFixed(0)}%)
-                      </span>
+                      </strong>
                     </div>
                   </div>
                 ) : (
-                  <span className="text-slate-400 italic">
-                    Click "Run Experiment" to observe particle counts.
+                  <span style={{ color: '#94A3B8', fontStyle: 'italic', fontSize: '11px' }}>
+                    Click "Run Experiment" to observe particle deflection.
                   </span>
                 )}
               </div>
             </div>
 
             {/* Educational takeaway note */}
-            <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-100 text-xs text-amber-900 flex items-start gap-2">
-              <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="t5-note-callout">
+              <Info size={16} style={{ flexShrink: 0, marginTop: '2px', color: '#D97706' }} />
               <span>
                 <strong>Educational Note:</strong> Individual runs fluctuate statistically, but
                 repeated measurements approach the theoretical probability P(+) = cos²(θ/2).
@@ -769,28 +761,29 @@ export const Track5Game: React.FC<Track5GameProps> = ({
             {/* Live Evaluator Feedback */}
             {hasRunExperiment && (
               <div
-                className={`p-3.5 rounded-xl border text-xs font-medium flex items-start gap-2.5 ${
+                className={`t5-feedback-banner ${
                   evaluation.status === 'success'
-                    ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                    ? 't5-feedback-success'
                     : evaluation.status === 'incorrect'
-                    ? 'bg-rose-50 text-rose-900 border-rose-200'
-                    : 'bg-slate-50 text-slate-700 border-slate-200'
+                    ? 't5-feedback-incorrect'
+                    : 't5-feedback-default'
                 }`}
               >
                 {evaluation.status === 'success' ? (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <CheckCircle2 size={18} style={{ color: '#059669', flexShrink: 0, marginTop: '2px' }} />
                 ) : (
-                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                  <AlertCircle size={18} style={{ color: '#E11D48', flexShrink: 0, marginTop: '2px' }} />
                 )}
-                <div className="flex flex-col gap-1">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <span>{evaluation.feedback}</span>
                   {evaluation.status === 'success' && (
                     <button
                       onClick={onNextLevel}
-                      className="mt-2 self-start inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors"
+                      className="btn btn-sm btn-success"
+                      style={{ alignSelf: 'flex-start', marginTop: '4px' }}
                     >
                       <span>Next Level</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
+                      <ChevronRight size={14} />
                     </button>
                   )}
                 </div>
@@ -802,26 +795,26 @@ export const Track5Game: React.FC<Track5GameProps> = ({
 
       {/* Educational Walkthrough Modal (? How to Play) */}
       {showHowToPlayModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200 flex flex-col gap-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <Compass className="w-5 h-5 text-blue-600" />
-                <h3 className="font-bold text-slate-900">
+        <div className="t5-modal-backdrop" onClick={() => setShowHowToPlayModal(false)}>
+          <div className="t5-modal-dialog" onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '10px', borderBottom: '1px solid #E2E8F0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Compass size={18} style={{ color: '#2563EB' }} />
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
                   How to Play: Spin Splitter
                 </h3>
               </div>
               <button
                 onClick={() => setShowHowToPlayModal(false)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-semibold"
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8', fontSize: '16px', fontWeight: 'bold' }}
               >
                 ✕
               </button>
             </div>
 
-            <div className="flex flex-col gap-3 text-xs text-slate-600 leading-relaxed">
-              <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100">
-                <strong className="text-blue-900 block mb-1">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+              <div style={{ padding: '10px 12px', backgroundColor: '#EFF6FF', borderRadius: '10px', border: '1px solid #BFDBFE' }}>
+                <strong style={{ color: '#1E40AF', display: 'block', marginBottom: '2px' }}>
                   1. Quantum Spin & Measurement Axis
                 </strong>
                 A spin-1/2 particle entering a Stern-Gerlach analyzer has state vector{' '}
@@ -829,8 +822,8 @@ export const Track5Game: React.FC<Track5GameProps> = ({
                 <strong>n</strong>.
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <strong className="text-slate-900 block mb-1">
+              <div style={{ padding: '10px 12px', backgroundColor: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '2px' }}>
                   2. Two Measurement Outcomes
                 </strong>
                 Spin measurement always produces either <strong>+</strong> or{' '}
@@ -838,16 +831,16 @@ export const Track5Game: React.FC<Track5GameProps> = ({
                 where θ is the angle between <strong>r</strong> and <strong>n</strong>.
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <strong className="text-slate-900 block mb-1">
-                  3. Rotate by Mouse Drag
+              <div style={{ padding: '10px 12px', backgroundColor: '#F8FAFC', borderRadius: '10px', border: '1px solid #E2E8F0' }}>
+                <strong style={{ color: '#0F172A', display: 'block', marginBottom: '2px' }}>
+                  3. Rotate by Needle Drag or Preset Buttons
                 </strong>
-                Click and drag the analyzer needle directly on the canvas to rotate the measurement
+                Click and drag the analyzer needle directly on the canvas (or use the angle buttons) to rotate the measurement
                 axis and watch probabilities redistribute in real time!
               </div>
 
-              <div className="p-3 bg-indigo-50/60 rounded-xl border border-indigo-100">
-                <strong className="text-indigo-900 block mb-1">
+              <div style={{ padding: '10px 12px', backgroundColor: '#EEF2FF', borderRadius: '10px', border: '1px solid #C7D2FE' }}>
+                <strong style={{ color: '#3730A3', display: 'block', marginBottom: '2px' }}>
                   4. State Collapse in Sequential Analyzers
                 </strong>
                 After measurement, the particle is projected onto the measured outcome (r' = ±n).
@@ -857,7 +850,8 @@ export const Track5Game: React.FC<Track5GameProps> = ({
 
             <button
               onClick={() => setShowHowToPlayModal(false)}
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-colors mt-2"
+              className="btn btn-primary"
+              style={{ width: '100%', marginTop: '6px', fontWeight: 700 }}
             >
               Got it, let's play!
             </button>
