@@ -43,8 +43,13 @@ import {
 } from '../engines/tunnelingEngine';
 import {
   simulateQPE,
+  sampleQPEMeasurements,
   evaluatePhaseLevel,
+  evaluateQuantumRadarLevel,
+  verifyQFTUnitarity,
+  calculateCircularDistance,
 } from '../engines/phaseEstimationEngine';
+import { TRACK_5_LEVELS } from '../levels/track5Levels';
 
 describe('Track 1 — Bloch Sphere Math & Engine', () => {
   it('correctly maps spherical angles to Cartesian coordinates', () => {
@@ -357,40 +362,152 @@ describe('Track 4 — Quantum Tunneling (Tunnel Run) Physics Engine', () => {
   });
 });
 
-describe('Track 5 — Quantum Phase Estimation Engine', () => {
-  it('peaks at exact binary fraction eigenphases', () => {
-    // True phase phi = 0.375 = 3/8
-    const sim = simulateQPE(0.375, 3);
-    expect(sim.mostProbableBitString).toBe('011'); // 3 in binary
-    expect(sim.mostProbablePhase).toBe(0.375);
-    expect(sim.theoreticalPeakProb).toBeCloseTo(1.0);
+describe('Track 5 — Quantum Phase Estimation (Quantum Radar) Engine', () => {
+  it('peaks at exact binary fraction eigenphases for 2, 3, and 4 qubits', () => {
+    // 2-bit: phi = 0.25 (1/4)
+    const sim2 = simulateQPE(0.25, 2);
+    expect(sim2.mostProbableBitString).toBe('01');
+    expect(sim2.mostProbablePhase).toBe(0.25);
+    expect(sim2.theoreticalPeakProb).toBeCloseTo(1.0);
+
+    // 3-bit: phi = 0.375 (3/8)
+    const sim3 = simulateQPE(0.375, 3);
+    expect(sim3.mostProbableBitString).toBe('011');
+    expect(sim3.mostProbablePhase).toBe(0.375);
+    expect(sim3.theoreticalPeakProb).toBeCloseTo(1.0);
+
+    // 4-bit: phi = 0.4375 (7/16)
+    const sim4 = simulateQPE(0.4375, 4);
+    expect(sim4.mostProbableBitString).toBe('0111');
+    expect(sim4.mostProbablePhase).toBe(0.4375);
+    expect(sim4.theoreticalPeakProb).toBeCloseTo(1.0);
   });
 
-  it('evaluates phase estimates within tolerance', () => {
-    const level = {
-      truePhase: 0.25,
-      estimationQubits: 3,
-      tolerance: 0.05,
-      difficulty: 'Beginner',
-      description: 'Find phase 0.250',
-    };
+  it('verifies unitarity of the Inverse QFT transformation matrix', () => {
+    expect(verifyQFTUnitarity(2)).toBe(true);
+    expect(verifyQFTUnitarity(3)).toBe(true);
+    expect(verifyQFTUnitarity(4)).toBe(true);
+  });
 
-    // Wrong estimate
-    const wrongRes = evaluatePhaseLevel({
-      playerEstimate: 0.6,
-      level,
-      hasInteracted: true,
-      hasSampled: true,
-    });
-    expect(wrongRes.status).toBe('incorrect');
+  it('handles periodic circular distance correctly around boundary [0, 1)', () => {
+    expect(calculateCircularDistance(0.99, 0.01)).toBeCloseTo(0.02);
+    expect(calculateCircularDistance(0.05, 0.95)).toBeCloseTo(0.10);
+    expect(calculateCircularDistance(0.25, 0.75)).toBeCloseTo(0.50);
+  });
 
-    // Accurate estimate
-    const correctRes = evaluatePhaseLevel({
-      playerEstimate: 0.25,
-      level,
-      hasInteracted: true,
-      hasSampled: true,
+  it('samples measurement shots that conserve total count', () => {
+    const sim = simulateQPE(0.625, 3); // 5/8 -> '101'
+    const shots = 100;
+    const counts = sampleQPEMeasurements(sim, shots);
+    const sum = Object.values(counts).reduce((a, b) => a + b, 0);
+    expect(sum).toBe(shots);
+    expect(counts['101']).toBe(shots); // Ideal dyadic case captures all shots
+  });
+
+  it('evaluates Quantum Radar states according to universal evaluator rules', () => {
+    const level1 = TRACK_5_LEVELS[0];
+
+    // Unstarted
+    const unstarted = evaluateQuantumRadarLevel(
+      {
+        selectedSignalId: null,
+        selectedPrecisionBits: 2,
+        hasRunQPE: false,
+        measurementCounts: null,
+        totalShotsSampled: 0,
+        playerPhaseEstimate: null,
+        isLocked: false,
+        scansUsed: 0,
+      },
+      level1
+    );
+    expect(unstarted.status).toBe('unstarted');
+
+    // Incomplete (selected but not run)
+    const incomplete = evaluateQuantumRadarLevel(
+      {
+        selectedSignalId: 'S2',
+        selectedPrecisionBits: 2,
+        hasRunQPE: false,
+        measurementCounts: null,
+        totalShotsSampled: 0,
+        playerPhaseEstimate: null,
+        isLocked: false,
+        scansUsed: 0,
+      },
+      level1
+    );
+    expect(incomplete.status).toBe('incomplete');
+
+    // Wrong signal
+    const wrongSig = evaluateQuantumRadarLevel(
+      {
+        selectedSignalId: 'S1', // S1 is Alpha, target is S2 Beta
+        selectedPrecisionBits: 2,
+        hasRunQPE: true,
+        measurementCounts: { '01': 100 },
+        totalShotsSampled: 100,
+        playerPhaseEstimate: 0.20,
+        isLocked: true,
+        scansUsed: 1,
+      },
+      level1
+    );
+    expect(wrongSig.status).toBe('incorrect');
+
+    // Wrong estimate on right signal
+    const wrongEst = evaluateQuantumRadarLevel(
+      {
+        selectedSignalId: 'S2',
+        selectedPrecisionBits: 2,
+        hasRunQPE: true,
+        measurementCounts: { '10': 100 },
+        totalShotsSampled: 100,
+        playerPhaseEstimate: 0.10,
+        isLocked: true,
+        scansUsed: 1,
+      },
+      level1
+    );
+    expect(wrongEst.status).toBe('incorrect');
+
+    // Success
+    const success = evaluateQuantumRadarLevel(
+      {
+        selectedSignalId: 'S2',
+        selectedPrecisionBits: 2,
+        hasRunQPE: true,
+        measurementCounts: { '10': 100 },
+        totalShotsSampled: 100,
+        playerPhaseEstimate: 0.50,
+        isLocked: true,
+        scansUsed: 1,
+      },
+      level1
+    );
+    expect(success.status).toBe('success');
+    expect(success.score).toBeGreaterThan(200);
+  });
+
+  it('verifies that all 10 Track 5 Quantum Radar levels are solvable', () => {
+    TRACK_5_LEVELS.forEach(lvl => {
+      const targetSig = lvl.signals.find(s => s.id === lvl.targetSignalId);
+      expect(targetSig).toBeDefined();
+
+      const res = evaluateQuantumRadarLevel(
+        {
+          selectedSignalId: lvl.targetSignalId,
+          selectedPrecisionBits: lvl.requiredPrecisionBits || 3,
+          hasRunQPE: true,
+          measurementCounts: { '00': 100 },
+          totalShotsSampled: 100,
+          playerPhaseEstimate: targetSig!.truePhase,
+          isLocked: true,
+          scansUsed: 1,
+        },
+        lvl
+      );
+      expect(res.status).toBe('success');
     });
-    expect(correctRes.status).toBe('success');
   });
 });

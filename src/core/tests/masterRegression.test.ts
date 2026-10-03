@@ -12,7 +12,7 @@ import { evaluateBlochLevel } from '../engines/blochEngine';
 import { evaluateGateLevel, PlacedGate } from '../engines/gateSimulationEngine';
 import { evaluateInterferenceLevel } from '../engines/interferenceEngine';
 import { evaluateTunnelingLevel } from '../engines/tunnelingEngine';
-import { evaluatePhaseLevel } from '../engines/phaseEstimationEngine';
+import { evaluatePhaseLevel, evaluateQuantumRadarLevel } from '../engines/phaseEstimationEngine';
 
 describe('Master QA Regression — Track 1: Qubits & The Bloch Sphere', () => {
   for (const lvl of TRACK_1_LEVELS) {
@@ -172,10 +172,10 @@ describe('Master QA Regression — Track 4: Quantum Tunneling (Tunnel Run)', () 
   }
 });
 
-describe('Master QA Regression — Track 5: Quantum Phase Estimation', () => {
+describe('Master QA Regression — Track 5: Quantum Phase Estimation (Quantum Radar)', () => {
   for (const lvl of TRACK_5_LEVELS) {
     it(`Level ${lvl.levelNumber}: ${lvl.title} passes phase evaluation scenarios`, () => {
-      // 1. Unstarted
+      // 1. Unstarted (legacy evaluator)
       const unstarted = evaluatePhaseLevel({
         playerEstimate: 0.1,
         level: lvl.phaseLevel,
@@ -184,7 +184,7 @@ describe('Master QA Regression — Track 5: Quantum Phase Estimation', () => {
       });
       expect(unstarted.status).toBe('unstarted');
 
-      // 2. Wrong estimate
+      // 2. Wrong estimate (legacy evaluator)
       const wrongEst = (lvl.phaseLevel.truePhase + 0.5) % 1.0;
       const wrong = evaluatePhaseLevel({
         playerEstimate: wrongEst,
@@ -194,7 +194,7 @@ describe('Master QA Regression — Track 5: Quantum Phase Estimation', () => {
       });
       expect(wrong.status).toBe('incorrect');
 
-      // 3. Exact estimate
+      // 3. Exact estimate (legacy evaluator)
       const correct = evaluatePhaseLevel({
         playerEstimate: lvl.phaseLevel.truePhase,
         level: lvl.phaseLevel,
@@ -202,6 +202,56 @@ describe('Master QA Regression — Track 5: Quantum Phase Estimation', () => {
         hasSampled: true,
       });
       expect(correct.status).toBe('success');
+
+      // 4. Quantum Radar Evaluator: Unstarted
+      const radarUnstarted = evaluateQuantumRadarLevel(
+        {
+          selectedSignalId: null,
+          selectedPrecisionBits: lvl.requiredPrecisionBits || 3,
+          hasRunQPE: false,
+          measurementCounts: null,
+          totalShotsSampled: 0,
+          playerPhaseEstimate: null,
+          isLocked: false,
+          scansUsed: 0,
+        },
+        lvl
+      );
+      expect(radarUnstarted.status).toBe('unstarted');
+
+      // 5. Quantum Radar Evaluator: Incomplete
+      const radarIncomplete = evaluateQuantumRadarLevel(
+        {
+          selectedSignalId: lvl.targetSignalId,
+          selectedPrecisionBits: lvl.requiredPrecisionBits || 3,
+          hasRunQPE: false,
+          measurementCounts: null,
+          totalShotsSampled: 0,
+          playerPhaseEstimate: null,
+          isLocked: false,
+          scansUsed: 0,
+        },
+        lvl
+      );
+      expect(radarIncomplete.status).toBe('incomplete');
+
+      // 6. Quantum Radar Evaluator: Success
+      const targetSig = lvl.signals.find(s => s.id === lvl.targetSignalId)!;
+      const radarSuccess = evaluateQuantumRadarLevel(
+        {
+          selectedSignalId: lvl.targetSignalId,
+          selectedPrecisionBits: lvl.requiredPrecisionBits || 3,
+          hasRunQPE: true,
+          measurementCounts: { '00': 100 },
+          totalShotsSampled: 100,
+          playerPhaseEstimate: targetSig.truePhase,
+          isLocked: true,
+          scansUsed: 1,
+        },
+        lvl
+      );
+      expect(radarSuccess.status).toBe('success');
+      expect(radarSuccess.score).toBeGreaterThan(150);
     });
   }
 });

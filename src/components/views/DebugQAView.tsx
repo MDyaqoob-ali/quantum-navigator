@@ -20,7 +20,7 @@ import { calculateBlochResultant, evaluateBlochLevel } from '../../core/engines/
 import { evaluateGateLevel } from '../../core/engines/gateSimulationEngine';
 import { calculateInterference, evaluateInterferenceLevel } from '../../core/engines/interferenceEngine';
 import { calculateSingleBarrierTransmission, calculateMultiBarrierTransmission, evaluateTunnelingLevel } from '../../core/engines/tunnelingEngine';
-import { simulateQPE, evaluatePhaseLevel } from '../../core/engines/phaseEstimationEngine';
+import { simulateQPE, evaluatePhaseLevel, verifyQFTUnitarity } from '../../core/engines/phaseEstimationEngine';
 
 export const DebugQAView: React.FC = () => {
   const [testResults, setTestResults] = useState<{ name: string; track: string; passed: boolean; message: string }[]>([]);
@@ -143,13 +143,21 @@ export const DebugQAView: React.FC = () => {
       const qpe = simulateQPE(0.375, 3);
       const t5Passed = qpe.mostProbableBitString === '011' && Math.abs(qpe.mostProbablePhase - 0.375) < 1e-4;
       results.push({
-        track: 'Track 5: Phase Estimation',
+        track: 'Track 5: Quantum Radar',
         name: 'Quantum Phase Estimation Dyadic Peak Detection (011 -> 0.375)',
         passed: t5Passed,
         message: t5Passed ? 'QPE readout peak verified.' : 'QPE peak mismatch.',
       });
+
+      const qftUnitary = verifyQFTUnitarity(3);
+      results.push({
+        track: 'Track 5: Quantum Radar',
+        name: 'Inverse QFT Unitary Matrix Transformation (QFT† * QFT = I)',
+        passed: qftUnitary,
+        message: qftUnitary ? 'Inverse QFT matrix unitarity verified.' : 'Unitarity violated.',
+      });
     } catch (err: any) {
-      results.push({ track: 'Track 5', name: 'QPE Execution', passed: false, message: err.message });
+      results.push({ track: 'Track 5', name: 'Quantum Radar Execution', passed: false, message: err.message });
     }
 
     setTestResults(results);

@@ -43,8 +43,15 @@ import {
 } from '../engines/tunnelingEngine.ts';
 import {
   simulateQPE,
+  sampleQPEMeasurements,
   evaluatePhaseLevel,
+  evaluateQuantumRadarLevel,
+  verifyQFTUnitarity,
+  calculateCircularDistance,
+  binaryFractionToPhase,
+  phaseToBinaryFraction,
 } from '../engines/phaseEstimationEngine.ts';
+import { TRACK_5_LEVELS } from '../levels/track5Levels.ts';
 
 let passed = 0;
 let failed = 0;
@@ -290,35 +297,160 @@ console.log('\n[Track 4] Quantum Tunneling (Tunnel Run) Physics Engine:');
   assert(successEval.status === 'success', 'Transmission within target tolerance returns status=success');
 }
 
-// TRACK 5 TESTS
-console.log('\n[Track 5] Quantum Phase Estimation Engine:');
+// TRACK 5 TESTS: QUANTUM PHASE ESTIMATION (QUANTUM RADAR)
+console.log('\n[Track 5] Quantum Phase Estimation (Quantum Radar) Engine:');
 {
-  const qpe = simulateQPE(0.375, 3);
-  assert(qpe.mostProbableBitString === '011', 'QPE identifies bitstring 011 for phi=0.375');
-  assert(approx(qpe.mostProbablePhase, 0.375), 'QPE identified decimal phase is 0.375');
+  // 1. Exact Dyadic Eigenphase Reconstruction
+  const qpe3 = simulateQPE(0.375, 3);
+  assert(qpe3.mostProbableBitString === '011', 'QPE identifies bitstring 011 for phi=0.375 (3-bit)');
+  assert(approx(qpe3.mostProbablePhase, 0.375), 'QPE identified decimal phase is 0.375');
+  assert(approx(qpe3.theoreticalPeakProb, 1.0, 1e-4), 'Exact dyadic phase has 100% peak probability in ideal simulation');
 
-  const qpeLevel = {
-    truePhase: 0.25,
-    estimationQubits: 3,
-    tolerance: 0.05,
-    difficulty: 'Beginner',
-    description: 'Find phase 0.250',
-  };
-  const wrongPhase = evaluatePhaseLevel({
-    playerEstimate: 0.7,
-    level: qpeLevel,
-    hasInteracted: true,
-    hasSampled: true,
-  });
-  assert(wrongPhase.status === 'incorrect', 'Estimate outside tolerance returns status=incorrect');
+  const qpe2 = simulateQPE(0.25, 2);
+  assert(qpe2.mostProbableBitString === '01', 'QPE identifies bitstring 01 for phi=0.25 (2-bit)');
+  assert(approx(qpe2.mostProbablePhase, 0.25), '2-bit QPE gives 0.250');
 
-  const correctPhase = evaluatePhaseLevel({
-    playerEstimate: 0.25,
-    level: qpeLevel,
-    hasInteracted: true,
-    hasSampled: true,
-  });
-  assert(correctPhase.status === 'success', 'Estimate within tolerance returns status=success');
+  const qpe4 = simulateQPE(0.4375, 4);
+  assert(qpe4.mostProbableBitString === '0111', '4-bit QPE resolves 7/16 = 0.4375 into bitstring 0111');
+  assert(approx(qpe4.mostProbablePhase, 0.4375), '4-bit QPE identified phase is 0.4375');
+
+  // 2. Unitarity of Inverse QFT Matrix
+  assert(verifyQFTUnitarity(2), 'Inverse QFT matrix is strictly unitary for 2 qubits (QFT† * QFT = I)');
+  assert(verifyQFTUnitarity(3), 'Inverse QFT matrix is strictly unitary for 3 qubits');
+  assert(verifyQFTUnitarity(4), 'Inverse QFT matrix is strictly unitary for 4 qubits');
+
+  // 3. Periodic Circular Distance
+  assert(approx(calculateCircularDistance(0.99, 0.01), 0.02), 'Circular distance handles periodic boundary (0.99 to 0.01 is 0.02)');
+  assert(approx(calculateCircularDistance(0.25, 0.75), 0.50), 'Circular distance handles antipodal phases (0.25 to 0.75 is 0.50)');
+
+  // 4. Binary Fraction Conversions
+  assert(approx(binaryFractionToPhase('011'), 0.375), 'binaryFractionToPhase maps 011 -> 0.375');
+  assert(phaseToBinaryFraction(0.375, 3) === '011', 'phaseToBinaryFraction maps 0.375 -> 011 for 3 bits');
+  assert(approx(binaryFractionToPhase('0111'), 0.4375), 'binaryFractionToPhase maps 0111 -> 0.4375');
+
+  // 5. Probabilistic Measurement Sampling
+  const shots = 100;
+  const sampledCounts = sampleQPEMeasurements(qpe3, shots);
+  const totalCounts = Object.values(sampledCounts).reduce((a, b) => a + b, 0);
+  assert(totalCounts === shots, 'sampleQPEMeasurements samples exactly requested number of shots');
+  assert((sampledCounts['011'] || 0) === shots, 'Dominant dyadic outcome captures 100% of counts in ideal measurement');
+
+  // 6. Non-exact continuous phase diffraction spread
+  const nonExactQPE = simulateQPE(0.3125, 3);
+  assert(nonExactQPE.probabilities.length === 8, 'Non-exact phase simulation returns complete 8-bin probability vector');
+  const sumProb = nonExactQPE.probabilities.reduce((acc, p) => acc + p.prob, 0);
+  assert(approx(sumProb, 1.0, 1e-4), 'Non-exact phase distribution strictly conserves total probability = 1.0');
+
+  // 7. Track 5 Level 1 Configuration & Universal Evaluator
+  const level1 = TRACK_5_LEVELS[0];
+
+  // No input -> unstarted
+  const unstartedRadar = evaluateQuantumRadarLevel(
+    {
+      selectedSignalId: null,
+      selectedPrecisionBits: 2,
+      hasRunQPE: false,
+      measurementCounts: null,
+      totalShotsSampled: 0,
+      playerPhaseEstimate: null,
+      isLocked: false,
+      scansUsed: 0,
+    },
+    level1
+  );
+  assert(unstartedRadar.status === 'unstarted', 'No signal selected returns status=unstarted');
+
+  // Signal selected, no QPE run -> incomplete
+  const incompleteRadar = evaluateQuantumRadarLevel(
+    {
+      selectedSignalId: 'S2',
+      selectedPrecisionBits: 2,
+      hasRunQPE: false,
+      measurementCounts: null,
+      totalShotsSampled: 0,
+      playerPhaseEstimate: null,
+      isLocked: false,
+      scansUsed: 0,
+    },
+    level1
+  );
+  assert(incompleteRadar.status === 'incomplete', 'Signal selected without QPE run returns status=incomplete');
+
+  // Wrong signal selected -> incorrect
+  const wrongSignalRadar = evaluateQuantumRadarLevel(
+    {
+      selectedSignalId: 'S1', // S1 is Alpha, target is S2 Beta
+      selectedPrecisionBits: 2,
+      hasRunQPE: true,
+      measurementCounts: { '01': 100 },
+      totalShotsSampled: 100,
+      playerPhaseEstimate: 0.20,
+      isLocked: true,
+      scansUsed: 1,
+    },
+    level1
+  );
+  assert(wrongSignalRadar.status === 'incorrect', 'Wrong signal selected returns status=incorrect');
+
+  // Right signal, wrong estimate -> incorrect
+  const wrongEstimateRadar = evaluateQuantumRadarLevel(
+    {
+      selectedSignalId: 'S2',
+      selectedPrecisionBits: 2,
+      hasRunQPE: true,
+      measurementCounts: { '10': 100 },
+      totalShotsSampled: 100,
+      playerPhaseEstimate: 0.15,
+      isLocked: true,
+      scansUsed: 1,
+    },
+    level1
+  );
+  assert(wrongEstimateRadar.status === 'incorrect', 'Estimate outside tolerance returns status=incorrect');
+
+  // Right signal, correct estimate -> success
+  const successRadar = evaluateQuantumRadarLevel(
+    {
+      selectedSignalId: 'S2',
+      selectedPrecisionBits: 2,
+      hasRunQPE: true,
+      measurementCounts: { '10': 100 },
+      totalShotsSampled: 100,
+      playerPhaseEstimate: 0.50,
+      isLocked: true,
+      scansUsed: 1,
+    },
+    level1
+  );
+  assert(successRadar.status === 'success', 'Correct signal and estimate within tolerance returns status=success');
+
+  // 8. Verify Solvability of all 10 Track 5 Levels
+  let all10Solvable = true;
+  for (const lvl of TRACK_5_LEVELS) {
+    const targetSig = lvl.signals.find(s => s.id === lvl.targetSignalId);
+    if (!targetSig) {
+      all10Solvable = false;
+      break;
+    }
+    const evalResult = evaluateQuantumRadarLevel(
+      {
+        selectedSignalId: lvl.targetSignalId,
+        selectedPrecisionBits: lvl.requiredPrecisionBits || 3,
+        hasRunQPE: true,
+        measurementCounts: { '00': 100 },
+        totalShotsSampled: 100,
+        playerPhaseEstimate: targetSig.truePhase,
+        isLocked: true,
+        scansUsed: 1,
+      },
+      lvl
+    );
+    if (evalResult.status !== 'success') {
+      all10Solvable = false;
+      console.error(`Level ${lvl.id} failed verification: ${evalResult.feedback}`);
+    }
+  }
+  assert(all10Solvable, 'All 10 Track 5 Quantum Radar levels are mathematically verified solvable');
 }
 
 console.log('\n[Education & Hints] Intelligent Hint Engine & Track Intros:');

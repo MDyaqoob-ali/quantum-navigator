@@ -75,12 +75,44 @@ export const ALL_ACHIEVEMENTS: Achievement[] = [
     xpReward: 500,
   },
   {
-    id: 'signal_hunter',
-    title: 'Signal Scanner Pioneer',
-    description: 'Estimate 3 quantum eigenphases in Track 5 (Phase Estimation).',
+    id: 'first_signal_lock',
+    title: 'First Signal Lock',
+    description: 'Complete your first Quantum Radar level.',
     icon: 'Radio',
     trackId: 'phase-estimation',
-    xpReward: 200,
+    xpReward: 150,
+  },
+  {
+    id: 'phase_scout',
+    title: 'Phase Scout',
+    description: 'Estimate 3 hidden quantum eigenphases in Track 5 (Quantum Radar).',
+    icon: 'Compass',
+    trackId: 'phase-estimation',
+    xpReward: 250,
+  },
+  {
+    id: 'precision_pilot',
+    title: 'Precision Pilot',
+    description: 'Complete a 4-bit precision QPE challenge.',
+    icon: 'Crosshair',
+    trackId: 'phase-estimation',
+    xpReward: 300,
+  },
+  {
+    id: 'radar_engineer',
+    title: 'Radar Engineer',
+    description: 'Complete a multi-signal quantum spectrum challenge.',
+    icon: 'Layers',
+    trackId: 'phase-estimation',
+    xpReward: 350,
+  },
+  {
+    id: 'quantum_radar_master',
+    title: 'Quantum Radar Master',
+    description: 'Conquer the final Track 5 Quantum Radar Master challenge!',
+    icon: 'Award',
+    trackId: 'phase-estimation',
+    xpReward: 500,
   },
   {
     id: 'perfectionist',
@@ -201,9 +233,40 @@ export function checkNewAchievements(stats: PlayerStats): { updatedStats: Player
     totalBonusXp += ach.xpReward;
   }
 
-  if (track5Count >= 3 && !currentUnlocked.has('signal_hunter')) {
-    currentUnlocked.add('signal_hunter');
-    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'signal_hunter')!;
+  if (track5Count >= 1 && !currentUnlocked.has('first_signal_lock')) {
+    currentUnlocked.add('first_signal_lock');
+    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'first_signal_lock')!;
+    newlyUnlocked.push(ach);
+    totalBonusXp += ach.xpReward;
+  }
+
+  if (track5Count >= 3 && !currentUnlocked.has('phase_scout')) {
+    currentUnlocked.add('phase_scout');
+    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'phase_scout')!;
+    newlyUnlocked.push(ach);
+    totalBonusXp += ach.xpReward;
+  }
+
+  const hasPrecisionSolved = completedKeys.some(k => k.includes('t5_l5') || k.includes('t5_l7'));
+  if (hasPrecisionSolved && !currentUnlocked.has('precision_pilot')) {
+    currentUnlocked.add('precision_pilot');
+    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'precision_pilot')!;
+    newlyUnlocked.push(ach);
+    totalBonusXp += ach.xpReward;
+  }
+
+  const hasRadarEngineer = completedKeys.some(k => k.includes('t5_l8') || k.includes('t5_l9'));
+  if (hasRadarEngineer && !currentUnlocked.has('radar_engineer')) {
+    currentUnlocked.add('radar_engineer');
+    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'radar_engineer')!;
+    newlyUnlocked.push(ach);
+    totalBonusXp += ach.xpReward;
+  }
+
+  const hasRadarMaster = completedKeys.some(k => k.includes('t5_l10'));
+  if (hasRadarMaster && !currentUnlocked.has('quantum_radar_master')) {
+    currentUnlocked.add('quantum_radar_master');
+    const ach = ALL_ACHIEVEMENTS.find(a => a.id === 'quantum_radar_master')!;
     newlyUnlocked.push(ach);
     totalBonusXp += ach.xpReward;
   }

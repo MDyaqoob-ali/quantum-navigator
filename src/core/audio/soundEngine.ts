@@ -113,6 +113,59 @@ class SoundEngine {
   }
 
   /**
+   * Radar Sonar Ping: Soft, high-frequency reverberant chirp for signal scanning.
+   */
+  public playRadarPing() {
+    if (this.muted) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.masterGain) return;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    const now = ctx.currentTime;
+    osc.frequency.setValueAtTime(1400, now);
+    osc.frequency.exponentialRampToValueAtTime(700, now + 0.15);
+
+    gain.gain.setValueAtTime(0.09, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(now);
+    osc.stop(now + 0.25);
+  }
+
+  /**
+   * Lock Acquired: Resonant double-tone confirmation.
+   */
+  public playLockAcquired() {
+    if (this.muted) return;
+    const ctx = this.initContext();
+    if (!ctx || !this.masterGain) return;
+
+    const now = ctx.currentTime;
+    [660, 880].forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + idx * 0.07);
+
+      gain.gain.setValueAtTime(0.08, now + idx * 0.07);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.07 + 0.18);
+
+      osc.connect(gain);
+      gain.connect(this.masterGain!);
+
+      osc.start(now + idx * 0.07);
+      osc.stop(now + idx * 0.07 + 0.2);
+    });
+  }
+
+  /**
    * Reset sound: Crisp dual-tone drop.
    */
   public playReset() {

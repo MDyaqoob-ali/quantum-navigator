@@ -68,9 +68,9 @@ export const ACTIVE_TRACKS: TrackMetadata[] = [
     id: 'phase-estimation',
     trackNumber: 5,
     title: 'Quantum Phase Estimation',
-    gameName: 'Quantum Signal Scanner',
-    tagline: 'Extract hidden eigenphases with inverse QFT.',
-    description: 'Analyze unknown unitary eigenphases. Simulate real controlled phase evolution and inverse-QFT readout to decode binary fraction frequencies.',
+    gameName: 'Quantum Radar',
+    tagline: 'Locate quantum signals and estimate hidden phases.',
+    description: 'Operate a quantum radar system. Scan unknown signal sources, execute real Quantum Phase Estimation circuits with inverse QFT, and lock onto target eigenphases with precision.',
     icon: 'Radio',
     color: '#F59E0B', // Amber
     levelCount: TRACK_5_LEVELS.length,
