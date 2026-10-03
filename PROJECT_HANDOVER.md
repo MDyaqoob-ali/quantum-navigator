@@ -63,6 +63,27 @@ Track 5 was completely replaced with **Spin Splitter**:
   - Binomial sampling over 10, 50, or 100 particles demonstrating the distinction between theoretical probability and statistical fluctuations in individual runs.
 
 ### UI & Interaction (`src/components/tracks/Track5PhaseEstimation/Track5Game.tsx` & `SpinCanvas.tsx`):
-- **Mouse Drag:** Direct click-and-drag rotation of analyzer orientation needle with responsive circular guide and grabbing cursor.
+- **Pointer Events & Pointer Capture:** Direct pointer down, move, and up handling with `setPointerCapture` so needle dragging never interrupts when the pointer exits the canvas boundary.
 - **Prominent Target Panel:** Permanently visible target distribution, live current distribution, error delta, and status.
+- **Live Evaluator Synchronization:** Apparatus orientation and branch selection changes immediately propagate live evaluation details to `App.tsx` and `MissionCard`.
+- **Clean Layout:** Streamlined interface without duplicate outer headers, integrating seamlessly beneath `TrackHeader` and `MissionCard`.
 - **Strict Light Theme & Non-Overlap:** Dedicated containers for Mission/Target, Stern-Gerlach Canvas, Apparatus Controls, and Experimental Readouts.
+
+---
+
+## 4. Track 5 Fixes & Stability Verification (Latest)
+
+1. **Mission Telemetry Synchronization (`App.tsx`):**
+   - Replaced obsolete `phaseLevel` telemetry fields with Track 5 Spin Splitter parameters: `targetProbPlus`, `targetTolerance`, and live evaluation `probPlus`, `probMinus`, and `errorDelta`.
+2. **Evaluator Engine Physical Continuity (`spinSplitterEngine.ts`):**
+   - Fixed `evaluateSpinSplitterLevel`: theoretical physics calculation now executes unconditionally so that even in unstarted/incomplete states (`hasRunExperiment: false`), the player gets real-time live detector probabilities and error readouts matching their needle rotation.
+3. **Event Dragging & Pointer Capture (`SpinCanvas.tsx`):**
+   - Transitioned canvas dragging from basic mouse events to HTML5 Pointer Events (`onPointerDown`, `onPointerMove`, `onPointerUp`, `onPointerCancel`) with `e.currentTarget.setPointerCapture(e.pointerId)`.
+4. **Apparatus State Synchronization (`Track5Game.tsx`):**
+   - Added `sendEvaluation` during needle rotation and branch changes.
+   - Added automatic synchronization for global resets from `TrackHeader` / `MissionCard`.
+   - Wired `onOpenComponentHelp` to the global educational popup system.
+5. **Quality Assurance & Verification:**
+   - 72 vitest unit and regression tests passing.
+   - TypeScript build (`tsc -b && vite build`) passing with 0 errors.
+   - Pushed cleanly to `origin/main`.
