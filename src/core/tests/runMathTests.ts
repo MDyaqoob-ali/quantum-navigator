@@ -36,6 +36,14 @@ import {
 import {
   calculateSyndrome,
   evaluateRepairLevel,
+  encodeLogicalZero,
+  encodeLogicalOne,
+  applyBitFlip,
+  applyPhaseFlip,
+  identifyBitFlipLocation,
+  applyCorrection,
+  verifyEncodedState,
+  isQuantumShieldSolved,
 } from '../engines/errorCorrectionEngine.ts';
 import {
   simulateQPE,
@@ -187,32 +195,54 @@ console.log('\n[Track 3] Quantum Interference Wave Engine:');
 }
 
 // TRACK 4 TESTS
-console.log('\n[Track 4] Quantum Error Correction Engine:');
+console.log('\n[Track 4] Quantum Error Correction (Quantum Shield) Engine:');
 {
-  assert(calculateSyndrome([
-    { index: 0, value: 0, phaseSign: 1 },
-    { index: 1, value: 0, phaseSign: 1 },
-    { index: 2, value: 0, phaseSign: 1 },
-  ]).syndromeString === '00', 'Syndrome 00 means no error');
+  // 1. Encoding functions
+  const zeroEncoded = encodeLogicalZero();
+  assert(zeroEncoded.length === 3 && zeroEncoded.every(q => q.value === 0 && q.phaseSign === 1), 'encodeLogicalZero returns |000⟩');
 
-  assert(calculateSyndrome([
-    { index: 0, value: 1, phaseSign: 1 },
-    { index: 1, value: 0, phaseSign: 1 },
-    { index: 2, value: 0, phaseSign: 1 },
-  ]).syndromeString === '10', 'Syndrome 10 identifies Q1 error');
+  const oneEncoded = encodeLogicalOne();
+  assert(oneEncoded.length === 3 && oneEncoded.every(q => q.value === 1 && q.phaseSign === 1), 'encodeLogicalOne returns |111⟩');
 
-  assert(calculateSyndrome([
-    { index: 0, value: 0, phaseSign: 1 },
-    { index: 1, value: 1, phaseSign: 1 },
-    { index: 2, value: 0, phaseSign: 1 },
-  ]).syndromeString === '11', 'Syndrome 11 identifies Q2 error');
+  // 2. Bit-flip & Phase-flip error engine
+  const flippedQ1 = applyBitFlip(encodeLogicalZero(), 0);
+  assert(flippedQ1[0].value === 1 && flippedQ1[1].value === 0 && flippedQ1[2].value === 0, 'applyBitFlip inverts Q1');
 
-  assert(calculateSyndrome([
-    { index: 0, value: 0, phaseSign: 1 },
-    { index: 1, value: 0, phaseSign: 1 },
-    { index: 2, value: 1, phaseSign: 1 },
-  ]).syndromeString === '01', 'Syndrome 01 identifies Q3 error');
+  const flippedQ2 = applyBitFlip(encodeLogicalZero(), 1);
+  assert(flippedQ2[1].value === 1, 'applyBitFlip inverts Q2');
 
+  const flippedQ3 = applyBitFlip(encodeLogicalZero(), 2);
+  assert(flippedQ3[2].value === 1, 'applyBitFlip inverts Q3');
+
+  const phaseFlipped = applyPhaseFlip(encodeLogicalZero(), 1);
+  assert(phaseFlipped[1].phaseSign === -1, 'applyPhaseFlip inverts phaseSign of Q2');
+
+  // 3. Syndrome calculations across all mappings
+  assert(calculateSyndrome(encodeLogicalZero()).syndromeString === '00', 'Syndrome 00 means no error');
+  assert(calculateSyndrome(flippedQ1).syndromeString === '10', 'Syndrome 10 identifies Q1 error');
+  assert(calculateSyndrome(flippedQ2).syndromeString === '11', 'Syndrome 11 identifies Q2 error');
+  assert(calculateSyndrome(flippedQ3).syndromeString === '01', 'Syndrome 01 identifies Q3 error');
+
+  // 4. identifyBitFlipLocation mappings
+  assert(identifyBitFlipLocation('10') === 0, 'identifyBitFlipLocation("10") maps to Q1 (0)');
+  assert(identifyBitFlipLocation('11') === 1, 'identifyBitFlipLocation("11") maps to Q2 (1)');
+  assert(identifyBitFlipLocation('01') === 2, 'identifyBitFlipLocation("01") maps to Q3 (2)');
+  assert(identifyBitFlipLocation('00') === -1, 'identifyBitFlipLocation("00") maps to none (-1)');
+
+  // 5. Corrections & Verifications
+  const repairedQ2 = applyCorrection(flippedQ2, 1, 'X');
+  assert(repairedQ2[1].value === 0, 'applyCorrection with X repairs Q2');
+
+  const verificationSuccess = verifyEncodedState(repairedQ2, 0);
+  assert(verificationSuccess.isRestored === true && verificationSuccess.syndrome === '00', 'verifyEncodedState confirms restoration to 000');
+  assert(isQuantumShieldSolved(repairedQ2, 0) === true, 'isQuantumShieldSolved returns true for restored state');
+
+  // 6. Wrong correction tests
+  const wrongRepaired = applyCorrection(flippedQ2, 0, 'X'); // Wrong qubit Q1
+  assert(verifyEncodedState(wrongRepaired, 0).isRestored === false, 'Wrong qubit correction fails verification');
+  assert(isQuantumShieldSolved(wrongRepaired, 0) === false, 'isQuantumShieldSolved returns false for wrong qubit');
+
+  // 7. Evaluator level test
   const qecLevel = {
     logicalValue: 0 as const,
     errorType: 'bit-flip' as const,

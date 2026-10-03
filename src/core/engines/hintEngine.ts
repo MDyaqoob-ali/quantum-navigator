@@ -356,17 +356,67 @@ function generateQecHint(level: any, actionState: any, tier: number, hasInteract
   const targetQubitName = corruptedIdx >= 0 ? `Q${corruptedIdx + 1}` : 'None';
   const reqGate = isBitFlip ? 'X' : 'Z';
 
-  // Read action state
-  const selectedQubit = actionState?.targetQubit ?? null;
-  const selectedGate = actionState?.gate ?? null;
-  const applied = actionState?.applied ?? false;
+  // Read action / shield state
+  const selectedQubit = actionState?.selectedQubit ?? actionState?.targetQubit ?? null;
+  const selectedGate = actionState?.selectedOperation ?? actionState?.gate ?? null;
+  const applied = actionState?.isApplied ?? actionState?.applied ?? false;
+  const phase = actionState?.phase ?? 'repair';
+  const s1Checked = actionState?.diagnosticChecks?.s1Checked ?? true;
+  const s2Checked = actionState?.diagnosticChecks?.s2Checked ?? true;
+
+  // State-specific contextual suggestions
+  if (phase === 'message' || phase === 'encode') {
+    return {
+      tier,
+      maxTier: 4,
+      title: 'Protect Logical State',
+      body: 'Start by encoding the quantum message into a 3-qubit redundant codeword (|0_L⟩ → |000⟩ or |1_L⟩ → |111⟩) so it survives transmission.',
+      actionableDirection: 'Click [ENCODE MESSAGE] then send through the channel.',
+      isClose: false,
+    };
+  }
+
+  if (phase === 'diagnose' && (!s1Checked || !s2Checked)) {
+    return {
+      tier,
+      maxTier: 4,
+      title: 'Run Diagnostic Checks',
+      body: 'Start by checking the syndrome. Probe both parity checks [CHECK S1] and [CHECK S2] to inspect relative differences without collapsing the message.',
+      actionableDirection: 'Click [CHECK S1] and [CHECK S2].',
+      isClose: false,
+    };
+  }
+
+  if (selectedQubit !== null && selectedQubit !== corruptedIdx) {
+    return {
+      tier,
+      maxTier: 4,
+      title: 'Re-evaluate Diagnosis',
+      body: `You selected Q${selectedQubit + 1}, but check the parity syndrome clues again. 10 indicates Q1, 11 indicates middle Q2, and 01 indicates Q3.`,
+      actionableDirection: `Re-examine syndrome and select ${targetQubitName}.`,
+      isClose: false,
+    };
+  }
+
+  if (selectedQubit === corruptedIdx && selectedGate !== null && selectedGate !== reqGate) {
+    return {
+      tier,
+      maxTier: 4,
+      title: 'Operation Mismatch',
+      body: isBitFlip
+        ? `The diagnosed error is a bit flip, while gate [${selectedGate}] applies a phase shift. Bit flips require Pauli-X.`
+        : `The diagnosed error is a phase flip, while gate [${selectedGate}] applies a bit flip. Phase flips require Pauli-Z.`,
+      actionableDirection: `Switch gate to [${reqGate}].`,
+      isClose: false,
+    };
+  }
 
   if (tier === 1) {
     return {
       tier: 1,
       maxTier: 4,
       title: 'Syndrome Parity Rules',
-      body: `Read the parity syndrome bits S1S2: S1 checks Q1 ⊕ Q2; S2 checks Q2 ⊕ Q3. A "1" indicates an odd parity mismatch.`,
+      body: `Read the parity syndrome bits: S1 checks parity between Q1 and Q2 (q1 ⊕ q2); S2 checks parity between Q2 and Q3 (q2 ⊕ q3). A "1" indicates a parity mismatch.`,
       actionableDirection: 'Examine the syndrome readout panel.',
       isClose: false,
     };
@@ -383,7 +433,7 @@ function generateQecHint(level: any, actionState: any, tier: number, hasInteract
       tier: 2,
       maxTier: 4,
       title: 'Syndrome Diagnosis',
-      body: `${mapping} Click on ${targetQubitName} to select it for repair.`,
+      body: `${mapping} Select ${targetQubitName} in the Repair Toolbox.`,
       actionableDirection: `Select ${targetQubitName}`,
       isClose: selectedQubit === corruptedIdx,
     };
@@ -406,7 +456,7 @@ function generateQecHint(level: any, actionState: any, tier: number, hasInteract
     tier: 4,
     maxTier: 4,
     title: 'Full Repair Sequence',
-    body: `1. Select ${targetQubitName}.\n2. Choose gate [${reqGate}].\n3. Click "Apply Gate [${reqGate}] to ${targetQubitName}".\n4. Click "Verify & Repair".`,
+    body: `1. Select ${targetQubitName}.\n2. Choose gate [${reqGate}].\n3. Click "Apply Repair".\n4. Click "Run Verification".`,
     actionableDirection: `Apply [${reqGate}] to ${targetQubitName}`,
     isClose: selectedQubit === corruptedIdx && selectedGate === reqGate && applied,
   };

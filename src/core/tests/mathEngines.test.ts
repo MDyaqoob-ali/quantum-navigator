@@ -38,6 +38,14 @@ import {
   generateCorruptedState,
   applyRepairToQubits,
   evaluateRepairLevel,
+  encodeLogicalZero,
+  encodeLogicalOne,
+  applyBitFlip,
+  applyPhaseFlip,
+  identifyBitFlipLocation,
+  applyCorrection,
+  verifyEncodedState,
+  isQuantumShieldSolved,
 } from '../engines/errorCorrectionEngine';
 import {
   simulateQPE,
@@ -271,6 +279,54 @@ describe('Track 4 — Quantum Error Correction Engine', () => {
       { index: 1, value: 0, phaseSign: 1 },
       { index: 2, value: 1, phaseSign: 1 },
     ]).syndromeString).toBe('01');
+  });
+
+  it('encodes logical states and applies bit-flip and phase-flip errors', () => {
+    const q0 = encodeLogicalZero();
+    expect(q0.length).toBe(3);
+    expect(q0.every(q => q.value === 0 && q.phaseSign === 1)).toBe(true);
+
+    const q1 = encodeLogicalOne();
+    expect(q1.length).toBe(3);
+    expect(q1.every(q => q.value === 1 && q.phaseSign === 1)).toBe(true);
+
+    const flippedQ1 = applyBitFlip(encodeLogicalZero(), 0);
+    expect(flippedQ1[0].value).toBe(1);
+
+    const flippedQ2 = applyBitFlip(encodeLogicalZero(), 1);
+    expect(flippedQ2[1].value).toBe(1);
+
+    const flippedQ3 = applyBitFlip(encodeLogicalZero(), 2);
+    expect(flippedQ3[2].value).toBe(1);
+
+    const phaseFlipped = applyPhaseFlip(encodeLogicalZero(), 1);
+    expect(phaseFlipped[1].phaseSign).toBe(-1);
+  });
+
+  it('maps all syndromes and locates bit-flip indices correctly', () => {
+    expect(identifyBitFlipLocation('10')).toBe(0); // Q1
+    expect(identifyBitFlipLocation('11')).toBe(1); // Q2
+    expect(identifyBitFlipLocation('01')).toBe(2); // Q3
+    expect(identifyBitFlipLocation('00')).toBe(-1); // None
+  });
+
+  it('verifies correctly restored state and rejects corrupted states', () => {
+    const zero = encodeLogicalZero();
+    expect(verifyEncodedState(zero, 0).isRestored).toBe(true);
+    expect(isQuantumShieldSolved(zero, 0)).toBe(true);
+
+    const noisy = applyBitFlip(zero, 1);
+    expect(verifyEncodedState(noisy, 0).isRestored).toBe(false);
+    expect(isQuantumShieldSolved(noisy, 0)).toBe(false);
+
+    // Correct repair with X on Q2
+    const repaired = applyCorrection(noisy, 1, 'X');
+    expect(verifyEncodedState(repaired, 0).isRestored).toBe(true);
+    expect(isQuantumShieldSolved(repaired, 0)).toBe(true);
+
+    // Wrong repair with X on Q1
+    const wrongRepaired = applyCorrection(noisy, 0, 'X');
+    expect(verifyEncodedState(wrongRepaired, 0).isRestored).toBe(false);
   });
 
   it('rejects wrong qubit repair and accepts correct repair', () => {

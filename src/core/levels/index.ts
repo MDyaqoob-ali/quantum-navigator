@@ -57,9 +57,9 @@ export const ACTIVE_TRACKS: TrackMetadata[] = [
     id: 'error-correction',
     trackNumber: 4,
     title: 'Quantum Error Correction',
-    gameName: 'Quantum Repair Shop',
-    tagline: 'Diagnose syndromes and protect quantum memory.',
-    description: 'Harness 3-qubit repetition codes. Extract parity syndromes to isolate bit-flip and phase-flip corruptions, then execute precise fault-tolerant repairs.',
+    gameName: 'Quantum Shield',
+    tagline: 'Protect, transmit, diagnose, and repair quantum information.',
+    description: 'Harness 3-qubit repetition codes. Transmit through noisy channels, extract parity syndromes to isolate corruptions, and execute verified quantum repairs.',
     icon: 'ShieldCheck',
     color: '#8B5CF6', // Purple/Violet
     levelCount: TRACK_4_LEVELS.length,

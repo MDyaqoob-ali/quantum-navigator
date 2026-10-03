@@ -51,6 +51,7 @@ export interface PlayerStats {
   levelStars: Record<string, number>;
   levelAttempts: Record<string, number>;
   unlockedAchievements: string[];
+  hintsUsed?: number;
   seenTrackIntros?: Record<string, boolean>;
   seenComponentIntros?: Record<string, boolean>;
   hintTiers?: Record<string, number>;
