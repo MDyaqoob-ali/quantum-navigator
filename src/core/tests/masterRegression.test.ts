@@ -188,6 +188,9 @@ describe('Master QA Regression — Track 5: Quantum Spin & Measurement (Spin Spl
         lvl
       );
       expect(unstarted.status).toBe('unstarted');
+      expect(unstarted.details.probPlus).toBeDefined();
+      expect(Number.isNaN(unstarted.details.probPlus)).toBe(false);
+      expect(unstarted.details.probPlus + unstarted.details.probMinus).toBeCloseTo(1.0);
 
       // 2. Budget exceeded check (if level has allowedExperiments)
       if (lvl.allowedExperiments) {

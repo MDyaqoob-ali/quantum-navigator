@@ -248,55 +248,7 @@ export function evaluateSpinSplitterLevel(
   state: SpinSplitterState,
   config: SpinSplitterLevelConfig
 ): SpinSplitterEvaluationResult {
-  // 1. Unstarted check
-  if (!state.hasRunExperiment && state.experimentsUsed === 0) {
-    return {
-      status: 'unstarted',
-      score: 0,
-      progress: 0,
-      feedback: 'Rotate the analyzer and click "Run Experiment" to observe particle deflection.',
-      details: {
-        probPlus: 0,
-        probMinus: 0,
-        targetProbPlus: config.targetProbPlus,
-        targetTolerance: config.targetTolerance,
-        errorDelta: 1.0,
-        angleDegrees: 0,
-        dotProduct: 0,
-        analyzer1Angle: state.analyzer1Angle,
-        analyzer2Angle: state.analyzer2Angle,
-        selectedBranch: state.selectedBranch,
-        experimentsUsed: 0,
-        hasRunExperiment: false,
-      },
-    };
-  }
-
-  // 2. Resource check: Did player exceed experiment run limit?
-  if (config.allowedExperiments && state.experimentsUsed > config.allowedExperiments) {
-    return {
-      status: 'invalid',
-      score: 0,
-      progress: 0,
-      feedback: `Experiment budget exceeded (${state.experimentsUsed}/${config.allowedExperiments}). Reset to try again.`,
-      details: {
-        probPlus: 0,
-        probMinus: 0,
-        targetProbPlus: config.targetProbPlus,
-        targetTolerance: config.targetTolerance,
-        errorDelta: 1.0,
-        angleDegrees: 0,
-        dotProduct: 0,
-        analyzer1Angle: state.analyzer1Angle,
-        analyzer2Angle: state.analyzer2Angle,
-        selectedBranch: state.selectedBranch,
-        experimentsUsed: state.experimentsUsed,
-        hasRunExperiment: state.hasRunExperiment,
-      },
-    };
-  }
-
-  // 3. Calculate physical quantum simulation
+  // 1. Calculate physical quantum simulation
   const axis1 = angleToAxis2D(state.analyzer1Angle);
   const axis2 =
     config.analyzerCount === 2 && state.analyzer2Angle !== undefined
@@ -310,7 +262,78 @@ export function evaluateSpinSplitterLevel(
     axis2
   );
 
-  // Check branch selection requirement
+  const activeRes =
+    config.targetDetector === 'analyzer1' || config.analyzerCount === 1
+      ? simResult.analyzer1
+      : simResult.analyzer2 || simResult.analyzer1;
+
+  // Determine active detector probability based on level target
+  const measuredProbPlus =
+    config.targetDetector === 'analyzer1' || config.analyzerCount === 1
+      ? simResult.analyzer1.probPlus
+      : simResult.finalProbPlus;
+
+  const measuredProbMinus = 1.0 - measuredProbPlus;
+  const errorDelta = Math.abs(measuredProbPlus - config.targetProbPlus);
+  const isSuccess = errorDelta <= config.targetTolerance;
+
+  // 2. Resource check: Did player exceed experiment run limit?
+  if (config.allowedExperiments && state.experimentsUsed > config.allowedExperiments) {
+    return {
+      status: 'invalid',
+      score: 0,
+      progress: 0,
+      feedback: `Experiment budget exceeded (${state.experimentsUsed}/${config.allowedExperiments}). Reset to try again.`,
+      details: {
+        probPlus: measuredProbPlus,
+        probMinus: measuredProbMinus,
+        targetProbPlus: config.targetProbPlus,
+        targetTolerance: config.targetTolerance,
+        errorDelta,
+        angleDegrees: activeRes.angleDegrees,
+        dotProduct: activeRes.dotProduct,
+        analyzer1Angle: state.analyzer1Angle,
+        analyzer2Angle: state.analyzer2Angle,
+        selectedBranch: state.selectedBranch,
+        experimentsUsed: state.experimentsUsed,
+        hasRunExperiment: state.hasRunExperiment,
+      },
+    };
+  }
+
+  // 3. Unstarted / Incomplete check (Experiment has not been executed yet)
+  if (!state.hasRunExperiment) {
+    const isUnstarted =
+      state.experimentsUsed === 0 &&
+      state.analyzer1Angle === config.analyzer1InitialAngle;
+    const progress = Math.max(0.1, 1 - errorDelta);
+
+    return {
+      status: isUnstarted ? 'unstarted' : 'incomplete',
+      score: 0,
+      progress,
+      feedback: isSuccess
+        ? 'Target reached! Click "Run Experiment" to verify with a particle beam.'
+        : 'Rotate the analyzer and click "Run Experiment" to observe particle deflection.',
+      details: {
+        probPlus: measuredProbPlus,
+        probMinus: measuredProbMinus,
+        targetProbPlus: config.targetProbPlus,
+        targetTolerance: config.targetTolerance,
+        errorDelta,
+        angleDegrees: activeRes.angleDegrees,
+        dotProduct: activeRes.dotProduct,
+        analyzer1Angle: state.analyzer1Angle,
+        analyzer2Angle: state.analyzer2Angle,
+        selectedBranch: state.selectedBranch,
+        collapsedState: simResult.collapsedState,
+        experimentsUsed: state.experimentsUsed,
+        hasRunExperiment: false,
+      },
+    };
+  }
+
+  // 4. Check branch selection requirement
   if (
     config.branchSelectionRequired &&
     config.targetBranch &&
@@ -338,21 +361,6 @@ export function evaluateSpinSplitterLevel(
       },
     };
   }
-
-  // Determine active detector probability based on level target
-  const measuredProbPlus =
-    config.targetDetector === 'analyzer1' || config.analyzerCount === 1
-      ? simResult.analyzer1.probPlus
-      : simResult.finalProbPlus;
-
-  const measuredProbMinus = 1.0 - measuredProbPlus;
-  const errorDelta = Math.abs(measuredProbPlus - config.targetProbPlus);
-  const isSuccess = errorDelta <= config.targetTolerance;
-
-  const activeRes =
-    config.targetDetector === 'analyzer1' || config.analyzerCount === 1
-      ? simResult.analyzer1
-      : simResult.analyzer2 || simResult.analyzer1;
 
   if (!isSuccess) {
     const isAlmost = errorDelta <= config.targetTolerance * 2.0;

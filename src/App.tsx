@@ -251,20 +251,31 @@ export function App() {
 
     if (activeTrackId === 'phase-estimation') {
       const isMatched = evaluation.status === 'success';
-      const truePh = (currentLevel.phaseLevel?.truePhase ?? currentLevel.truePhase ?? 0.25).toFixed(3);
-      const tol = currentLevel.phaseLevel?.tolerance ?? currentLevel.tolerance ?? 0.05;
-      const currentEst = evaluation.details?.playerEstimate !== undefined ? evaluation.details.playerEstimate.toFixed(3) : undefined;
-      const err = evaluation.details?.error !== undefined ? `Δθ = ${evaluation.details.error.toFixed(3)}` : `Tol ±${tol}`;
+      const targetPlus = ((currentLevel.targetProbPlus ?? 0.5) * 100).toFixed(0);
+      const tol = ((currentLevel.targetTolerance ?? 0.04) * 100).toFixed(0);
+      const currentPlus = evaluation.details?.probPlus !== undefined
+        ? (evaluation.details.probPlus * 100).toFixed(1)
+        : undefined;
+      const currentMinus = evaluation.details?.probMinus !== undefined
+        ? (evaluation.details.probMinus * 100).toFixed(1)
+        : undefined;
+      const err = evaluation.details?.errorDelta !== undefined
+        ? `${(evaluation.details.errorDelta * 100).toFixed(1)} pp`
+        : `Tol ±${tol}%`;
 
       return {
-        targetLabel: 'TARGET EIGENPHASE θ',
-        targetValue: `θ = ${truePh} (±${tol})`,
-        currentLabel: 'ESTIMATED PHASE',
-        currentValue: currentEst !== undefined ? `θ = ${currentEst}` : 'Adjust Calibration Dial',
-        errorLabel: 'PHASE ERROR',
+        targetLabel: 'TARGET DETECTOR +',
+        targetValue: `${targetPlus}% ± ${tol}%`,
+        currentLabel: 'CURRENT DETECTORS',
+        currentValue: currentPlus !== undefined ? `+: ${currentPlus}% / −: ${currentMinus}%` : 'Rotate Analyzer',
+        errorLabel: 'PROBABILITY ERROR',
         errorValue: err,
         statusLabel: 'STATUS',
-        statusValue: isMatched ? '✓ TARGET MATCHED' : 'ESTIMATING',
+        statusValue: isMatched
+          ? '✓ TARGET REACHED'
+          : (evaluation.status === 'incorrect'
+            ? 'OUT OF RANGE'
+            : (evaluation.status === 'unstarted' ? 'ROTATE & RUN EXPERIMENT' : 'ADJUSTING')),
         isMatched,
       };
     }
@@ -465,6 +476,7 @@ export function App() {
               onEvaluate={handleEvaluationSuccess}
               onRecordInteraction={recordInteraction}
               onNextLevel={handleNextLevel}
+              onOpenComponentHelp={handleOpenComponentHelp}
             />
           )}
         </div>

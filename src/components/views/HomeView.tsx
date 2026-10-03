@@ -38,7 +38,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       case 'error-correction':
         return <Zap size={24} style={{ color: '#8B5CF6' }} />;
       case 'phase-estimation':
-        return <Radio size={24} style={{ color: 'var(--accent-amber)' }} />;
+        return <Compass size={24} style={{ color: 'var(--accent-amber)' }} />;
     }
   };
 

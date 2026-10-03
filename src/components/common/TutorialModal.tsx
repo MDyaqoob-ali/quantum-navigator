@@ -112,24 +112,24 @@ export const TutorialModal: React.FC<TutorialModalProps> = ({
         };
       case 'phase-estimation':
         return {
-          title: 'Track 5 Tutorial: Quantum Phase Estimation',
-          icon: <Radio size={24} style={{ color: 'var(--accent-amber)' }} />,
+          title: 'Track 5 Tutorial: Quantum Spin & Measurement (Spin Splitter)',
+          icon: <Compass size={24} style={{ color: 'var(--accent-amber)' }} />,
           steps: [
             {
-              title: '1. Unknown Quantum Signal',
-              desc: 'An unknown unitary operator imparts eigenphase e^(2πiφ) to the target qubit.',
+              title: '1. Incoming Spin State',
+              desc: 'A spin-1/2 particle enters the Stern-Gerlach apparatus with an intrinsic spin direction represented by a Bloch vector r.',
             },
             {
-              title: '2. Analyze the QPE Histogram',
-              desc: 'Look at the highest column in the inverse-QFT probability histogram to read out the measured bitstring.',
+              title: '2. Rotate the Analyzer Needle',
+              desc: 'Click and drag the analyzer needle on the canvas to orient the measurement axis n. Probabilities change continuously: P(+) = cos²(θ/2).',
             },
             {
-              title: '3. Convert Binary Fractions',
-              desc: 'Convert the bitstring to decimal: e.g., |011⟩ is 0/2 + 1/4 + 1/8 = 0.375.',
+              title: '3. Run the Experiment',
+              desc: 'Click "Run Experiment" to send a beam of particles through the analyzer and observe the probabilistic split into Detector + and Detector −.',
             },
             {
-              title: '4. Calibrate the Scanner Dial',
-              desc: 'Adjust your estimation scanner dial to match the eigenphase and click "Verify Phase Estimate"!',
+              title: '4. State Collapse in Sequential Measurements',
+              desc: 'Measurement projects the particle onto the measured outcome (r\' = ±n). In later levels, select which branch routes into Analyzer 2!',
             },
           ],
         };

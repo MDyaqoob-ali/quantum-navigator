@@ -436,6 +436,23 @@ describe('Track 5 — Quantum Spin & Measurement (Spin Splitter) Engine', () => 
       lvl1
     );
     expect(unstarted.status).toBe('unstarted');
+    expect(unstarted.details.probPlus).toBeCloseTo(1.0);
+    expect(unstarted.details.errorDelta).toBeCloseTo(0.0);
+
+    // Rotated prior to running experiment -> status is incomplete and probabilities update live
+    const rotatedUnrun = evaluateSpinSplitterLevel(
+      {
+        analyzer1Angle: 90,
+        selectedBranch: '+',
+        hasRunExperiment: false,
+        experimentSample: null,
+        experimentsUsed: 0,
+      },
+      lvl1
+    );
+    expect(rotatedUnrun.status).toBe('incomplete');
+    expect(rotatedUnrun.details.probPlus).toBeCloseTo(0.5);
+    expect(rotatedUnrun.details.errorDelta).toBeCloseTo(0.5);
 
     // Level 1 success
     const lvl1Success = evaluateSpinSplitterLevel(

@@ -104,16 +104,16 @@ export const SpinCanvas: React.FC<SpinCanvasProps> = ({
     }
   };
 
-  // Convert mouse event coords to canvas coordinates
-  const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Convert pointer event coords to canvas coordinates
+  const getCanvasCoords = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
     };
   };
 
@@ -127,17 +127,18 @@ export const SpinCanvas: React.FC<SpinCanvasProps> = ({
     return Math.round((rad * 180) / Math.PI) % 360;
   };
 
-  // Mouse handlers for dragging analyzer needles
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Pointer event handlers for silky smooth dragging with pointer capture
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const { x, y } = getCanvasCoords(e);
+    const { x, y } = getCanvasCoords(e.clientX, e.clientY);
     const layout = getLayout(canvas.width, canvas.height);
 
     // Check Analyzer 1 click/drag
     if (level.analyzer1Adjustable) {
       const distA1 = Math.hypot(x - layout.a1.x, y - layout.a1.y);
-      if (distA1 <= layout.a1.radius + 18) {
+      if (distA1 <= layout.a1.radius + 24) {
+        e.currentTarget.setPointerCapture(e.pointerId);
         setActiveDrag('a1');
         const newAngle = calculateAngleFromPoint(layout.a1.x, layout.a1.y, x, y);
         onRotateAnalyzer1(newAngle);
@@ -149,7 +150,8 @@ export const SpinCanvas: React.FC<SpinCanvasProps> = ({
     if (isTwoAnalyzer && level.analyzer2Adjustable && (layout as any).a2 && onRotateAnalyzer2) {
       const a2Pos = (layout as any).a2;
       const distA2 = Math.hypot(x - a2Pos.x, y - a2Pos.y);
-      if (distA2 <= a2Pos.radius + 18) {
+      if (distA2 <= a2Pos.radius + 24) {
+        e.currentTarget.setPointerCapture(e.pointerId);
         setActiveDrag('a2');
         const newAngle = calculateAngleFromPoint(a2Pos.x, a2Pos.y, x, y);
         onRotateAnalyzer2(newAngle);
@@ -161,21 +163,21 @@ export const SpinCanvas: React.FC<SpinCanvasProps> = ({
     if (isTwoAnalyzer && onSelectBranch) {
       const bPlus = (layout as any).branchPlus;
       const bMinus = (layout as any).branchMinus;
-      if (bPlus && Math.hypot(x - bPlus.x, y - bPlus.y) <= 30) {
+      if (bPlus && Math.hypot(x - bPlus.x, y - bPlus.y) <= 32) {
         onSelectBranch('+');
         return;
       }
-      if (bMinus && Math.hypot(x - bMinus.x, y - bMinus.y) <= 30) {
+      if (bMinus && Math.hypot(x - bMinus.x, y - bMinus.y) <= 32) {
         onSelectBranch('-');
         return;
       }
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const { x, y } = getCanvasCoords(e);
+    const { x, y } = getCanvasCoords(e.clientX, e.clientY);
     const layout = getLayout(canvas.width, canvas.height);
 
     // Handle Active Dragging
@@ -193,29 +195,34 @@ export const SpinCanvas: React.FC<SpinCanvasProps> = ({
 
     // Hover detection for cursor styling
     let hovered: string | null = null;
-    if (level.analyzer1Adjustable && Math.hypot(x - layout.a1.x, y - layout.a1.y) <= layout.a1.radius + 18) {
+    if (level.analyzer1Adjustable && Math.hypot(x - layout.a1.x, y - layout.a1.y) <= layout.a1.radius + 24) {
       hovered = 'a1';
     } else if (
       isTwoAnalyzer &&
       level.analyzer2Adjustable &&
       (layout as any).a2 &&
-      Math.hypot(x - (layout as any).a2.x, y - (layout as any).a2.y) <= (layout as any).a2.radius + 18
+      Math.hypot(x - (layout as any).a2.x, y - (layout as any).a2.y) <= (layout as any).a2.radius + 24
     ) {
       hovered = 'a2';
     } else if (isTwoAnalyzer) {
       const bPlus = (layout as any).branchPlus;
       const bMinus = (layout as any).branchMinus;
-      if (bPlus && Math.hypot(x - bPlus.x, y - bPlus.y) <= 30) {
+      if (bPlus && Math.hypot(x - bPlus.x, y - bPlus.y) <= 32) {
         hovered = 'branchPlus';
-      } else if (bMinus && Math.hypot(x - bMinus.x, y - bMinus.y) <= 30) {
+      } else if (bMinus && Math.hypot(x - bMinus.x, y - bMinus.y) <= 32) {
         hovered = 'branchMinus';
       }
     }
     setHoveredObject(hovered);
   };
 
-  const handleMouseUp = () => {
-    setActiveDrag(null);
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (activeDrag) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {}
+      setActiveDrag(null);
+    }
   };
 
   // Generate simulated particles when experiment runs
@@ -734,10 +741,10 @@ export const SpinCanvas: React.FC<SpinCanvasProps> = ({
         ref={canvasRef}
         width={720}
         height={isTwoAnalyzer ? 560 : 440}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
         className={`w-full max-w-[720px] h-auto select-none touch-none ${
           activeDrag
             ? 'cursor-grabbing'
