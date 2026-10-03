@@ -7,11 +7,14 @@ import {
   User,
   FlaskConical,
   Flame,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { ActiveView } from '../../core/hooks/useGameState';
 import { PlayerStats } from '../../core/types';
 import { calculatePlayerLevel } from '../../core/gamification/scoringEngine';
 import { QuantumEnergy } from './QuantumEnergy';
+import { soundEngine } from '../../core/audio/soundEngine';
 
 interface TopBarProps {
   currentView: ActiveView;
@@ -21,6 +24,18 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ currentView, onNavigate, stats }) => {
   const levelInfo = calculatePlayerLevel(stats.xp);
+  const [isMuted, setIsMuted] = React.useState(soundEngine.isMuted());
+
+  React.useEffect(() => {
+    return soundEngine.subscribe(setIsMuted);
+  }, []);
+
+  const handleToggleSound = () => {
+    const newMuted = soundEngine.toggleMute();
+    if (!newMuted) {
+      soundEngine.playClick();
+    }
+  };
 
   return (
     <header className="topbar">
@@ -142,6 +157,29 @@ export const TopBar: React.FC<TopBarProps> = ({ currentView, onNavigate, stats }
             {stats.xp} XP
           </span>
         </div>
+
+        {/* Sound Mute Toggle */}
+        <button
+          onClick={handleToggleSound}
+          title={isMuted ? 'Unmute Sound Effects' : 'Mute Sound Effects'}
+          aria-label={isMuted ? 'Unmute Sound Effects' : 'Mute Sound Effects'}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '32px',
+            height: '32px',
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: isMuted ? 'var(--bg-secondary)' : '#EDE9FE',
+            border: `1px solid ${isMuted ? 'var(--border-subtle)' : '#DDD6FE'}`,
+            color: isMuted ? 'var(--text-muted)' : 'var(--accent-purple)',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            padding: 0,
+          }}
+        >
+          {isMuted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+        </button>
       </div>
     </header>
   );

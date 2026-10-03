@@ -21,6 +21,7 @@ import { Track4Game } from './components/tracks/Track4ErrorCorrection/Track4Game
 import { Track5Game } from './components/tracks/Track5PhaseEstimation/Track5Game';
 
 import { Sparkles, X } from 'lucide-react';
+import { soundEngine } from './core/audio/soundEngine';
 import './styles/index.css';
 import './styles/layout.css';
 
@@ -65,6 +66,13 @@ export function App() {
 
   const [successModalDismissed, setSuccessModalDismissed] = useState(false);
 
+  // Play achievement sound when newly unlocked
+  useEffect(() => {
+    if (newlyUnlockedAchievements.length > 0) {
+      soundEngine.playAchievement();
+    }
+  }, [newlyUnlockedAchievements]);
+
   // Trigger track intro automatically on first visit to any track
   useEffect(() => {
     if (currentView === 'game' && activeTrackId) {
@@ -108,11 +116,13 @@ export function App() {
   const handleOpenHint = () => {
     const res = useHint();
     if (res.reason === 'no-energy') {
+      soundEngine.playError();
       setEduPopup({
         isOpen: true,
         type: 'no-energy',
       });
     } else if (res.allowed && res.hintData) {
+      soundEngine.playEnergyHint();
       setEduPopup({
         isOpen: true,
         type: 'hint',

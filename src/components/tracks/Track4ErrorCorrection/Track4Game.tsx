@@ -17,6 +17,7 @@ import { EvaluationResult } from '../../../core/types';
 import { ResultPanel } from '../../common/ResultPanel';
 import { EducationalPopup } from '../../common/EducationalPopup';
 import { COMPONENT_HELP } from '../../../core/educationData';
+import { soundEngine } from '../../../core/audio/soundEngine';
 import {
   ShieldCheck,
   AlertTriangle,
@@ -187,11 +188,13 @@ export const Track4Game: React.FC<Track4GameProps> = ({
   // PHASE TRANSITIONS & ACTIONS
   // -------------------------------------------------------------
   const handleProceedToEncode = () => {
+    soundEngine.playClick();
     onRecordInteraction();
     setPhase('encode');
   };
 
   const handleExecuteEncode = () => {
+    soundEngine.playStateTransition();
     onRecordInteraction();
     const encoded = encodeLogicalState(level.errorLevel.logicalValue, level.errorLevel.codeType);
     setEncodedQubits(encoded);
@@ -199,6 +202,7 @@ export const Track4Game: React.FC<Track4GameProps> = ({
   };
 
   const handleSendThroughChannel = () => {
+    soundEngine.playStateTransition();
     onRecordInteraction();
     setPhase('transmit');
     setIsTransmitting(true);
@@ -219,12 +223,14 @@ export const Track4Game: React.FC<Track4GameProps> = ({
   };
 
   const handleProceedToDiagnose = () => {
+    soundEngine.playClick();
     onRecordInteraction();
     setPhase('diagnose');
   };
 
   // Interactive syndrome scan buttons
   const handleCheckS1 = () => {
+    soundEngine.playParityScan();
     onRecordInteraction();
     setIsScanningS1(true);
     setTimeout(() => {
@@ -234,6 +240,7 @@ export const Track4Game: React.FC<Track4GameProps> = ({
   };
 
   const handleCheckS2 = () => {
+    soundEngine.playParityScan();
     onRecordInteraction();
     setIsScanningS2(true);
     setTimeout(() => {
@@ -243,23 +250,27 @@ export const Track4Game: React.FC<Track4GameProps> = ({
   };
 
   const handleSelectDiagnosis = (qIdx: number) => {
+    soundEngine.playClick();
     onRecordInteraction();
     setPlayerDiagnosis(qIdx);
   };
 
   const handleProceedToRepair = () => {
+    soundEngine.playClick();
     onRecordInteraction();
     setPhase('repair');
   };
 
   // Repair Toolbox actions
   const handleSelectQubit = (qIdx: number) => {
+    soundEngine.playClick();
     onRecordInteraction();
     setSelectedQubit(qIdx);
     setIsApplied(false);
   };
 
   const handleSelectGate = (gate: CorrectionGate) => {
+    soundEngine.playGatePlace();
     onRecordInteraction();
     setSelectedGate(gate);
     setIsApplied(false);
@@ -267,6 +278,7 @@ export const Track4Game: React.FC<Track4GameProps> = ({
 
   const handleApplyRepair = () => {
     if (selectedQubit === null || selectedGate === null) return;
+    soundEngine.playGatePlace();
     onRecordInteraction();
 
     const updated = applyCorrection(noisyQubits, selectedQubit, selectedGate);
@@ -309,11 +321,19 @@ export const Track4Game: React.FC<Track4GameProps> = ({
     };
 
     const res = evaluateQuantumShield(stateObj, level.errorLevel);
+    if (res.status === 'success') {
+      soundEngine.playSuccess();
+    } else if (res.status === 'incorrect') {
+      soundEngine.playError();
+    } else {
+      soundEngine.playClick();
+    }
     onEvaluate(res);
   };
 
   // Sandbox injection handler
   const handleSandboxInject = () => {
+    soundEngine.playStateTransition();
     const base = encodeLogicalState(sandboxLogical, sandboxErrorType === 'phase-flip' ? 'phase-flip-code' : 'bit-flip-code');
     const noisy = applyChannelNoise(base, sandboxErrorType, sandboxQubitIndex, sandboxErrorType === 'phase-flip' ? 'phase-flip-code' : 'bit-flip-code');
     setEncodedQubits(base);

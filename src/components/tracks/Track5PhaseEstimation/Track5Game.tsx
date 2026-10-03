@@ -11,6 +11,7 @@ import { ResultPanel } from '../../common/ResultPanel';
 import { EducationalPopup } from '../../common/EducationalPopup';
 import { COMPONENT_HELP } from '../../../core/educationData';
 import { Radio, BarChart2, HelpCircle } from 'lucide-react';
+import { soundEngine } from '../../../core/audio/soundEngine';
 
 interface Track5GameProps {
   level: PhaseLevelConfig;
@@ -52,6 +53,7 @@ export const Track5Game: React.FC<Track5GameProps> = ({
 
   // Run experimental sampling
   const handleSampleShots = () => {
+    soundEngine.playStateTransition();
     onRecordInteraction();
     const counts = sampleQPEMeasurements(qpeResult, 100);
     setSampleCounts(counts);
@@ -65,6 +67,13 @@ export const Track5Game: React.FC<Track5GameProps> = ({
       hasInteracted,
       hasSampled: !!sampleCounts,
     });
+    if (res.status === 'success') {
+      soundEngine.playSuccess();
+    } else if (res.status === 'incorrect') {
+      soundEngine.playError();
+    } else {
+      soundEngine.playClick();
+    }
     onEvaluate(res);
   };
 

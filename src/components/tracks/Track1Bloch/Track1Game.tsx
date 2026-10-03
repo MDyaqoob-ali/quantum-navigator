@@ -11,6 +11,7 @@ import { ResultPanel } from '../../common/ResultPanel';
 import { EducationalPopup } from '../../common/EducationalPopup';
 import { COMPONENT_HELP } from '../../../core/educationData';
 import { HelpCircle } from 'lucide-react';
+import { soundEngine } from '../../../core/audio/soundEngine';
 import {
   sphericalToCartesian,
   cartesianToSpherical,
@@ -91,6 +92,13 @@ export const Track1Game: React.FC<Track1GameProps> = ({
       toleranceDegrees: level.toleranceDegrees,
       hasInteracted,
     });
+    if (res.status === 'success') {
+      soundEngine.playSuccess();
+    } else if (res.status === 'incorrect') {
+      soundEngine.playError();
+    } else {
+      soundEngine.playClick();
+    }
     onEvaluate(res);
   };
 

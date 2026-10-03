@@ -14,6 +14,7 @@ import { COMPONENT_HELP } from '../../../core/educationData';
 import { formatComplex } from '../../../core/math/complex';
 import { stateFidelity } from '../../../core/math/statevector';
 import { Plus, Trash2, Cpu, HelpCircle } from 'lucide-react';
+import { soundEngine } from '../../../core/audio/soundEngine';
 
 interface Track2GameProps {
   level: GateLevelConfig;
@@ -80,14 +81,17 @@ export const Track2Game: React.FC<Track2GameProps> = ({
       const filtered = prev.filter(g => !(g.targetWire === wire && g.step === step));
       return [...filtered, newGate];
     });
+    soundEngine.playGatePlace();
   };
 
   const handleRemoveGate = (gateId: string) => {
+    soundEngine.playClick();
     onRecordInteraction();
     setCircuit(prev => prev.filter(g => g.id !== gateId));
   };
 
   const handleClearCircuit = () => {
+    soundEngine.playClick();
     onRecordInteraction();
     setCircuit([]);
   };
@@ -108,6 +112,13 @@ export const Track2Game: React.FC<Track2GameProps> = ({
       level: level.gateLevel,
       hasRun: true,
     });
+    if (res.status === 'success') {
+      soundEngine.playSuccess();
+    } else if (res.status === 'incorrect') {
+      soundEngine.playError();
+    } else {
+      soundEngine.playClick();
+    }
     onEvaluate(res);
   };
 

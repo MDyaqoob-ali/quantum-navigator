@@ -12,6 +12,7 @@ import { ResultPanel } from '../../common/ResultPanel';
 import { EducationalPopup } from '../../common/EducationalPopup';
 import { COMPONENT_HELP } from '../../../core/educationData';
 import { Activity, Lock, RefreshCw, BarChart2, HelpCircle } from 'lucide-react';
+import { soundEngine } from '../../../core/audio/soundEngine';
 
 interface Track3GameProps {
   level: WaveLevelConfig;
@@ -58,6 +59,7 @@ export const Track3Game: React.FC<Track3GameProps> = ({
 
   // Run experimental shot sampling
   const handleRunExperiment = () => {
+    soundEngine.playStateTransition();
     onRecordInteraction();
     const sampled = sampleInterferenceShots(interferenceResult.probA, 100);
     setExperimentShots(sampled);
@@ -73,6 +75,13 @@ export const Track3Game: React.FC<Track3GameProps> = ({
       tolerance: level.interferenceLevel.tolerance,
       hasInteracted,
     });
+    if (res.status === 'success') {
+      soundEngine.playSuccess();
+    } else if (res.status === 'incorrect') {
+      soundEngine.playError();
+    } else {
+      soundEngine.playClick();
+    }
     onEvaluate(res);
   };
 
